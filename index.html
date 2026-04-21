@@ -219,14 +219,14 @@
                     });
                 }
                 window.showToast('✅ โหลดข้อมูลสำเร็จ');
-                window.updateFoodDatalist(); // อัปเดตเมนูอาหารที่เคยลงไว้
+                window.updateFoodDatalist(); 
             } catch (e) {
                 console.error(e);
                 window.showToast('❌ โหลดข้อมูลไม่สำเร็จ');
             }
         };
 
-        // 🚀 ฟังก์ชัน ส่งออก Excel (ฉบับอัปเกรด ดึงชื่อหัวข้อตามหน้าฟอร์ม และรองรับ Dynamic Rows)
+        // 🚀 ฟังก์ชัน ส่งออก Excel (ฉบับอัปเกรด ดึงชื่อตามฟอร์มเป๊ะๆ และเว้นว่างช่องไม่กรอก)
         window.exportSelectedToExcel = async () => {
             const checkboxes = document.querySelectorAll('.export-cb:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
@@ -249,19 +249,20 @@
                         const diseaseVal = raw['_selected_disease'];
                         const form = document.getElementById('form-' + diseaseVal);
                         
-                        const row = {
-                            "ลำดับ": exportIndex++,
-                            "วันที่บันทึก": raw.timestamp ? new Date(raw.timestamp).toLocaleString('th-TH') : '',
-                            "โรคที่สอบสวน": raw.disease_label || ''
-                        };
+                        const row = {};
+                        // ข้อมูลตั้งต้น
+                        row["ลำดับ"] = exportIndex++;
+                        row["วันที่บันทึก"] = raw.timestamp ? new Date(raw.timestamp).toLocaleString('th-TH') : '';
+                        row["โรคที่สอบสวน"] = raw.disease_label || '';
 
                         if (form) {
-                            const inputs = form.querySelectorAll('input, select, textarea');
-                            let currentMainLabel = 'ข้อมูลทั่วไป'; 
+                            // ดึง input ทั้งหมด ยกเว้นพวกที่ซ่อน หรือ Dynamic Rows (จะได้ดึงแยกทีหลัง)
+                            const inputs = form.querySelectorAll('input:not(.exclude-auto), select, textarea');
+                            let processedRadios = new Set();
                             
                             inputs.forEach(inp => {
+                                // 1. หาชื่อคอลัมน์ (ตามคำรอบข้าง)
                                 let colName = '';
-                                
                                 if(inp.closest('td')) {
                                     let table = inp.closest('table');
                                     let td = inp.closest('td');
@@ -269,56 +270,78 @@
                                     let colIndex = Array.from(tr.children).indexOf(td);
                                     let headers = table.querySelectorAll('thead th');
                                     if(headers[colIndex]) {
-                                        // ลบข้อความในปุ่ม + ออกจากหัวตาราง
                                         colName = headers[colIndex].innerText.replace('+', '').trim();
-                                    }
-                                    else colName = 'ข้อมูลตาราง';
-                                } 
-                                else {
+                                    } else colName = 'ข้อมูลตาราง';
+                                } else {
                                     let prev = inp.previousElementSibling;
                                     if (prev && (prev.classList.contains('lbl') || prev.classList.contains('lbl-b'))) {
                                         colName = prev.innerText.replace(/:/g, '').trim();
-                                        currentMainLabel = colName; 
                                     } else if (inp.closest('.rl')) {
                                         let firstSpan = inp.closest('.rl').querySelector('.lbl, .lbl-b');
-                                        if(firstSpan) currentMainLabel = firstSpan.innerText.replace(/:/g, '').trim();
+                                        if(firstSpan) colName = firstSpan.innerText.replace(/:/g, '').trim();
                                     }
                                 }
+                                if (!colName) colName = inp.placeholder || 'ระบุ';
 
-                                if (!colName) {
-                                    if (inp.placeholder) colName = inp.placeholder;
-                                    else colName = currentMainLabel + ' (ระบุ)';
+                                // ป้องกันชื่อคอลัมน์ซ้ำ (เช่น บ้านเลขที่ 1, บ้านเลขที่ 2)
+                                let uniqueColName = colName;
+                                let counter = 1;
+                                while(row.hasOwnProperty(uniqueColName)) {
+                                    uniqueColName = `${colName} (${counter++})`;
                                 }
 
+                                // 2. ดึงค่ามาลงตาราง
                                 if (inp.type === 'radio') {
-                                    if (inp.checked) {
-                                        let labelNode = inp.closest('label');
-                                        let radioText = labelNode ? labelNode.innerText.trim() : 'เลือกแล้ว';
-                                        row[currentMainLabel || colName] = radioText;
-                                    }
+                                    // จัดการ Radio ให้เหลือคอลัมน์เดียว
+                                    if (processedRadios.has(inp.name)) return;
+                                    processedRadios.add(inp.name);
+                                    
+                                    let checkedRadio = form.querySelector(`input[name="${inp.name}"]:checked`);
+                                    let val = checkedRadio && checkedRadio.closest('label') ? checkedRadio.closest('label').innerText.trim() : '';
+                                    row[uniqueColName] = val;
                                 } else if (inp.type === 'checkbox') {
-                                    if (inp.checked) {
-                                        let labelNode = inp.closest('label');
-                                        let chkText = labelNode ? labelNode.innerText.trim() : colName;
-                                        row[chkText] = '✔️ มี/ใช่';
+                                    // จัดการ Checkbox ให้ลงเป็นติ๊กถูก
+                                    let labelNode = inp.closest('label');
+                                    let chkText = labelNode ? labelNode.innerText.trim() : colName;
+                                    
+                                    let uniqueChkName = chkText;
+                                    let chkCounter = 1;
+                                    while(row.hasOwnProperty(uniqueChkName)) {
+                                        uniqueChkName = `${chkText} (${chkCounter++})`;
                                     }
+                                    row[uniqueChkName] = inp.checked ? '✔️ มี/ใช่' : '';
                                 } else {
-                                    if (inp.value && inp.value.trim() !== '') {
-                                        let finalColName = colName;
-                                        let count = 1;
-                                        while(row[finalColName] !== undefined && row[finalColName] !== inp.value) {
-                                            finalColName = `${colName} (${count++})`;
-                                        }
-                                        row[finalColName] = inp.value;
-                                    }
+                                    // กล่องข้อความปกติ (แม้จะว่างเปล่าก็ดึง)
+                                    row[uniqueColName] = inp.value || '';
                                 }
                             });
+
+                            // จัดการตารางอาหาร (Food Poisoning ข้อ 5.4) แบบตายตัว 3 มื้อ 3 รายการ
+                            const foodTable = form.querySelector('#food-history-table');
+                            if (foodTable && raw['_food_history']) {
+                                raw['_food_history'].forEach((dayData, dIdx) => {
+                                    let dayNum = dIdx + 1;
+                                    row[`วันที่กิน (วันที่ ${dayNum})`] = dayData.date || '';
+                                    ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+                                        let mealName = meal === 'breakfast' ? 'มื้อเช้า' : (meal === 'lunch' ? 'มื้อกลางวัน' : 'มื้อเย็น');
+                                        let items = dayData.meals[meal] || [];
+                                        // ล็อคไว้ที่ 3 เมนูต่อมื้อ เพื่อให้ตาราง Excel ออกมาสวยงามตายตัว
+                                        for(let i=0; i<3; i++) {
+                                            let item = items[i] || {food:'', source:'', shared:''};
+                                            row[`${mealName} เมนูที่ ${i+1} (วันที่ ${dayNum})`] = item.food;
+                                            row[`${mealName} แหล่งที่ซื้อ ${i+1} (วันที่ ${dayNum})`] = item.source;
+                                            row[`${mealName} ผู้ร่วมวง ${i+1} (วันที่ ${dayNum})`] = item.shared;
+                                        }
+                                    });
+                                });
+                            }
                         }
                         
                         dataToExport.push(row);
                     }
                 });
 
+                // คืนค่าฟอร์มกลับสู่สภาพเดิม
                 window.setFormData(currentFormData);
 
                 if (dataToExport.length === 0) return alert('ไม่มีข้อมูลสำหรับส่งออก');
@@ -366,22 +389,19 @@
         function initializeInputIds() {
             const inputs = document.querySelectorAll('.disease-form input, .disease-form select, .disease-form textarea');
             inputs.forEach((input, i) => { 
-                // ไม่สร้าง ID ให้กับช่องที่มีคลาส exclude-auto (เช่น ฟอร์มอาหารแบบ dynamic)
                 if (!input.id && !input.classList.contains('exclude-auto')) {
                     input.id = 'epi_f_' + i; 
                 }
             });
         }
 
-        // ================= ฟังก์ชันจัดการฟอร์มอาหาร (Dynamic Rows) =================
+        // ฟังก์ชันจัดการฟอร์มอาหาร (Dynamic Rows)
         window.addFoodToCell = function(btn) {
             const td = btn.closest('td');
             const group = td.querySelector('.food-item-group').cloneNode(true);
             
-            // ล้างค่าที่ค้างอยู่
             group.querySelectorAll('input').forEach(inp => inp.value = '');
             
-            // เปลี่ยนปุ่มเป็น "ลบ"
             const actionBtn = group.querySelector('.action-add-btn, .action-del-btn');
             actionBtn.innerHTML = '🗑️ ลบ';
             actionBtn.className = 'text-red-500 hover:text-red-700 text-[11px] font-bold no-print action-del-btn bg-red-50 px-2 py-0.5 rounded';
@@ -409,7 +429,6 @@
                 });
             }
         };
-        // ========================================================================
 
         window.getFormData = function() {
             const data = {};
@@ -421,7 +440,6 @@
             });
             data['_selected_disease'] = document.getElementById('disease-selector').value;
 
-            // จัดการบันทึกตารางอาหาร (รองรับ Dynamic Rows)
             const foodTable = document.getElementById('food-history-table');
             if (foodTable) {
                 const history = [];
@@ -448,7 +466,7 @@
                     history.push(dayData);
                 });
                 data['_food_history'] = history;
-                data['food_history_items'] = foodItemsList; // เก็บไว้ทำ Datalist ตอนโหลด
+                data['food_history_items'] = foodItemsList; 
             }
 
             return data;
@@ -467,7 +485,6 @@
                 }
             });
 
-            // จัดการโหลดตารางอาหาร
             if (data['_food_history']) {
                 const foodTable = document.getElementById('food-history-table');
                 if (foodTable) {
@@ -480,7 +497,6 @@
                             meals.forEach((meal, mIdx) => {
                                 const td = tr.querySelectorAll('td')[mIdx + 1];
                                 
-                                // เคลียร์ฟอร์มอาหารที่งอกมาทั้งหมด เหลือแค่อันแรกไว้เป็น Template
                                 const groups = td.querySelectorAll('.food-item-group');
                                 groups.forEach((g, i) => { if (i > 0) g.remove(); });
                                 
@@ -488,7 +504,6 @@
                                 items.forEach((item, i) => {
                                     let group = td.querySelectorAll('.food-item-group')[i];
                                     if (!group) {
-                                        // ถ้ารายการใน Database มีมากกว่า 1 ให้สร้างฟอร์มใหม่รอรับ
                                         group = td.querySelector('.food-item-group').cloneNode(true);
                                         const actionBtn = group.querySelector('.action-add-btn, .action-del-btn');
                                         actionBtn.innerHTML = '🗑️ ลบ';
@@ -501,7 +516,6 @@
                                     group.querySelector('.food-shared-input').value = item.shared || '';
                                 });
                                 
-                                // ถ้าไม่มีข้อมูลเลย ให้เคลียร์ Template อันแรก
                                 if (items.length === 0) {
                                     const group = td.querySelector('.food-item-group');
                                     group.querySelector('.food-name-input').value = '';
@@ -515,11 +529,12 @@
             }
         }
 
+        // รีเซ็ตให้กลับเป็น Default Value ตามที่กำหนดไว้
         window.clearForm = function() {
             document.querySelectorAll('.disease-form input, .disease-form select:not(#disease-selector), .disease-form textarea').forEach(input => {
                 if (!input.classList.contains('exclude-auto')) {
                     if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
-                    else input.value = '';
+                    else input.value = input.defaultValue || ''; 
                 }
             });
 
@@ -622,6 +637,33 @@
         </div>
     </div>
 
+    <datalist id="list-prov">
+        <option value="ศรีสะเกษ"></option>
+    </datalist>
+    <datalist id="list-amphoe">
+        <option value="เมืองศรีสะเกษ"></option>
+    </datalist>
+    <datalist id="list-tambon">
+        <option value="เมืองเหนือ"></option>
+        <option value="เมืองใต้"></option>
+        <option value="คูซอด"></option>
+        <option value="ซำ"></option>
+        <option value="จาน"></option>
+        <option value="ตะดอบ"></option>
+        <option value="หนองครก"></option>
+        <option value="โพนข่า"></option>
+        <option value="โพนค้อ"></option>
+        <option value="โพนเขวา"></option>
+        <option value="หญ้าปล้อง"></option>
+        <option value="ทุ่ม"></option>
+        <option value="หนองไฮ"></option>
+        <option value="น้ำคำ"></option>
+        <option value="หนองแก้ว"></option>
+        <option value="หนองไผ่"></option>
+        <option value="หมากเขียบ"></option>
+        <option value="โพธิ์"></option>
+    </datalist>
+
     <div id="form-container" class="w-full flex flex-col items-center">
         
         <div id="form-fp" class="disease-form">
@@ -635,14 +677,14 @@
                 
                 <div class="box mt-4">
                     <div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชื่อหมู่บ้าน/ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div>
-                    <div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1"></div>
+                    <div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48" list="list-tambon"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48" list="list-amphoe" value="เมืองศรีสะเกษ"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1" list="list-prov" value="ศรีสะเกษ"></div>
                     <div class="rl"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="fp_a1">เทศบาลนคร</label><label><input type="radio" name="fp_a1">เทศบาลเมือง</label><label><input type="radio" name="fp_a1">เทศบาลตำบล</label><label><input type="radio" name="fp_a1">อบต.</label></div>
                 </div>
 
                 <div class="box">
                     <div class="rl"><span class="lbl-b">ภูมิลำเนา</span><span class="lbl ml-2">เป็นที่เดียวกับที่อยู่ขณะป่วยหรือไม่</span><label><input type="radio" name="fp_s">ใช่</label><label><input type="radio" name="fp_s">ไม่ใช่ ระบุ</label><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชื่อชุมชน</span><input type="text" class="inp flex-1"></div>
-                    <div class="rl"><span class="lbl">ซอย</span><input type="text" class="inp w-32"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48"><span class="lbl">อำเภอ</span><input type="text" class="inp flex-1"></div>
-                    <div class="rl"><span class="lbl">จังหวัด</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="fp_a2">เทศบาลนคร</label><label><input type="radio" name="fp_a2">เทศบาลเมือง</label><label><input type="radio" name="fp_a2">เทศบาลตำบล</label><label><input type="radio" name="fp_a2">อบต.</label></div>
+                    <div class="rl"><span class="lbl">ซอย</span><input type="text" class="inp w-32"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48" list="list-tambon"><span class="lbl">อำเภอ</span><input type="text" class="inp flex-1" list="list-amphoe" value="เมืองศรีสะเกษ"></div>
+                    <div class="rl"><span class="lbl">จังหวัด</span><input type="text" class="inp w-48" list="list-prov" value="ศรีสะเกษ"><label class="ml-4"><input type="radio" name="fp_a2">เทศบาลนคร</label><label><input type="radio" name="fp_a2">เทศบาลเมือง</label><label><input type="radio" name="fp_a2">เทศบาลตำบล</label><label><input type="radio" name="fp_a2">อบต.</label></div>
                 </div>
 
                 <div class="rl"><span class="lbl">ชื่อ-สกุล ผู้ปกครอง (กรณี < 15 ปี)</span><input type="text" class="inp flex-1"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"></div>
@@ -838,8 +880,8 @@
                 <div class="rl"><span class="lbl">เพศ</span><label><input type="radio" name="dg_g">ชาย</label><label><input type="radio" name="dg_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"><span class="lbl">ศาสนา</span><input type="text" class="inp w-24"><span class="lbl">สัญชาติ</span><input type="text" class="inp w-24"><span class="lbl">อาชีพ</span><input type="text" class="inp flex-1"></div>
                 <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
                 
-                <div class="box mt-4"><div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div><div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="dg_a1">เทศบาลนคร</label><label><input type="radio" name="dg_a1">เทศบาลเมือง</label><label><input type="radio" name="dg_a1">เทศบาลตำบล</label><label><input type="radio" name="dg_a1">อบต.</label></div></div>
-                <div class="box"><div class="rl"><span class="lbl-b">ภูมิลำเนา</span><span class="lbl ml-2">เป็นที่เดียวกับที่อยู่ขณะป่วยหรือไม่</span><label><input type="radio" name="dg_s">ใช่</label><label><input type="radio" name="dg_s">ไม่ใช่</label><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">ชุมชน</span><input type="text" class="inp w-64"><span class="lbl">ซอย</span><input type="text" class="inp w-32"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48"><span class="lbl">จังหวัด</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="dg_a2">นคร</label><label><input type="radio" name="dg_a2">เมือง</label><label><input type="radio" name="dg_a2">ตำบล</label><label><input type="radio" name="dg_a2">อบต.</label></div></div>
+                <div class="box mt-4"><div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div><div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48" list="list-tambon"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48" list="list-amphoe" value="เมืองศรีสะเกษ"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1" list="list-prov" value="ศรีสะเกษ"></div><div class="rl"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="dg_a1">เทศบาลนคร</label><label><input type="radio" name="dg_a1">เทศบาลเมือง</label><label><input type="radio" name="dg_a1">เทศบาลตำบล</label><label><input type="radio" name="dg_a1">อบต.</label></div></div>
+                <div class="box"><div class="rl"><span class="lbl-b">ภูมิลำเนา</span><span class="lbl ml-2">เป็นที่เดียวกับที่อยู่ขณะป่วยหรือไม่</span><label><input type="radio" name="dg_s">ใช่</label><label><input type="radio" name="dg_s">ไม่ใช่</label><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">ชุมชน</span><input type="text" class="inp w-64"><span class="lbl">ซอย</span><input type="text" class="inp w-32"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp flex-1" list="list-tambon"></div><div class="rl"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48" list="list-amphoe" value="เมืองศรีสะเกษ"><span class="lbl">จังหวัด</span><input type="text" class="inp w-48" list="list-prov" value="ศรีสะเกษ"><label class="ml-4"><input type="radio" name="dg_a2">นคร</label><label><input type="radio" name="dg_a2">เมือง</label><label><input type="radio" name="dg_a2">ตำบล</label><label><input type="radio" name="dg_a2">อบต.</label></div></div>
                 <div class="rl"><span class="lbl">ชื่อผู้ปกครอง</span><input type="text" class="inp flex-1"><span class="lbl">อาชีพ</span><input type="text" class="inp w-32"><span class="lbl">เกี่ยวข้องเป็น</span><input type="text" class="inp w-24"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-32"></div>
 
                 <div class="sec-title">2. อาการและอาการแสดง</div>
@@ -925,7 +967,7 @@
                 <div class="rl ml-4"><span class="lbl-b w-32">รายได้ต่อเดือน</span><label><input type="radio" name="rbi">< 10k</label><label><input type="radio" name="rbi">10k-25k</label><label><input type="radio" name="rbi">> 25k</label><span class="lbl-b ml-6">ลักษณะที่อยู่</span><input type="text" class="inp flex-1"></div>
                 <div class="rl ml-4"><span class="lbl-b w-32">สิทธิรักษาพยาบาล</span><label><input type="radio" name="rbi2">ไม่มีสิทธิ</label><label><input type="radio" name="rbi2">ประกันสังคม</label><label><input type="radio" name="rbi2">บัตรทอง</label><label><input type="radio" name="rbi2">ข้าราชการ</label><label><input type="radio" name="rbi2">อื่นๆ</label><input type="text" class="inp flex-1"></div>
                 
-                <div class="rl mt-4"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-12"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ตำบล</span><input type="text" class="inp w-32"><span class="lbl">อำเภอ</span><input type="text" class="inp w-32"><span class="lbl">จังหวัด</span><input type="text" class="inp w-32"></div>
+                <div class="rl mt-4"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-12"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ตำบล</span><input type="text" class="inp w-32" list="list-tambon"><span class="lbl">อำเภอ</span><input type="text" class="inp w-32" list="list-amphoe" value="เมืองศรีสะเกษ"><span class="lbl">จังหวัด</span><input type="text" class="inp w-32" list="list-prov" value="ศรีสะเกษ"></div>
                 <div class="rl"><span class="lbl">พิกัด GPS</span><input type="text" class="inp flex-1"><span class="lbl-b ml-4">ลักษณะชุมชน</span><label><input type="radio" name="rba1">เขตเมือง</label><label><input type="radio" name="rba1">ชนบท</label><label><input type="radio" name="rba1">อื่นๆ</label></div>
                 
                 <div class="sec-title mt-6">2. อาการและอาการแสดง</div>
