@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแบบฟอร์มสอบสวนโรค (Epidemiology Form)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        /* ==========================================
+           1. Global Styles
+           ========================================== */
+        body { font-family: 'Sarabun', sans-serif; background-color: #f3f4f6; display: flex; flex-direction: column; align-items: center; padding: 1rem; margin: 0; color: #1f2937; }
+        .system-controller { width: 100%; max-width: 1024px; background: #eff6ff; border: 2px solid #bfdbfe; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); position: sticky; top: 10px; z-index: 50; }
+        .controller-group { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .system-controller label { font-weight: bold; color: #1e3a8a; font-size: 15px; }
+        .system-controller select { padding: 6px 12px; font-size: 15px; border-radius: 6px; border: 1px solid #93c5fd; font-family: 'Sarabun', sans-serif; background: white; cursor: pointer; outline:none;}
+        
+        .action-btn { padding: 6px 12px; font-size: 14px; border-radius: 6px; border: 1px solid #93c5fd; background: white; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: #1e3a8a; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none; }
+        .action-btn.primary { background: #2563eb; color: white; border-color: #1d4ed8; }
+        .action-btn.primary:hover { background: #1d4ed8; }
+        .action-btn:hover:not(.primary) { background: #dbeafe; border-color: #60a5fa; }
+        
+        .print-btn { position: fixed; bottom: 30px; right: 30px; background-color: #2563eb; color: white; padding: 14px 28px; border-radius: 9999px; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4); font-weight: 600; cursor: pointer; z-index: 1000; border: none; display: flex; align-items: center; gap: 8px; }
+        .print-btn:hover { background-color: #1d4ed8; transform: translateY(-2px); }
+        
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 1100; bottom: 30px; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; }
+        #toast.show { visibility: visible; opacity: 1; }
+
+        /* ==========================================
+           2. Form Styles
+           ========================================== */
+        .disease-form { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .a4-sheet { width: 100%; max-width: 1024px; background: white; margin-bottom: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); padding: 2rem 3rem; border-radius: 12px; box-sizing: border-box; font-size: 15px; line-height: 1.8; }
+        
+        .rl { display: flex; align-items: baseline; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+        .lbl { font-weight: 500; white-space: nowrap; }
+        .lbl-b { font-weight: 700; white-space: nowrap; }
+        .sec-title { font-weight: 700; font-size: 1.125rem; color: #1d4ed8; margin: 1.5rem 0 0.5rem 0; width: 100%; display: block; }
+        .disease-form label { display: inline-flex; align-items: baseline; white-space: nowrap; margin-right: 12px; cursor: pointer; }
+        
+        .inp { border: 1px solid #cbd5e1; padding: 2px 6px; border-radius: 4px; background: #f8fafc; outline: none; height: 26px; font-family: inherit; font-size: inherit; }
+        .inp:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+        .disease-form input[type="radio"], .disease-form input[type="checkbox"] { margin-right: 6px; width: 16px; height: 16px; accent-color: #2563eb; position: relative; top: 2px; }
+        
+        .w-12 { width: 3rem; text-align: center; } .w-16 { width: 4rem; text-align: center; } .w-24 { width: 6rem; text-align: center; } .w-32 { width: 8rem; } .w-48 { width: 12rem; } .w-64 { width: 16rem; } .flex-1 { flex: 1; min-width: 50px; }
+        .box { background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 1rem; }
+        
+        .a4-sheet table { width: 100%; border-collapse: collapse; margin: 16px 0; border: 1px solid #e2e8f0; text-align: center;}
+        .a4-sheet th, .a4-sheet td { border: 1px solid #cbd5e1; padding: 6px; font-size: 0.9rem; }
+        .a4-sheet th { background-color: #f1f5f9; font-weight: 600; }
+        .a4-sheet textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; resize: none; background: #f8fafc; outline: none; }
+
+        /* ==========================================
+           3. PRINT STYLES
+           ========================================== */
+        @media print {
+            @page { size: A4; margin: 0; }
+            body { background: white; padding: 0; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .disease-form { display: none !important; }
+            .disease-form.active-form { display: block !important; }
+            
+            .a4-sheet { width: 210mm !important; min-height: 297mm !important; max-width: 210mm !important; margin: 0 auto !important; box-shadow: none !important; border-radius: 0 !important; padding: 12mm 15mm !important; page-break-after: always; font-size: 14px !important; line-height: 1.6 !important; }
+            .rl { gap: 4px !important; margin-bottom: 6px !important; }
+            .sec-title { color: #000 !important; margin: 1rem 0 0.25rem 0 !important; }
+            
+            .inp { border: none !important; border-bottom: 1px dotted #000 !important; background: transparent !important; border-radius: 0 !important; padding: 0 2px !important; height: 20px !important; margin: 0 4px !important; color: #000 !important; }
+            .inp::placeholder { color: transparent; }
+            input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator, select { display: block !important; -webkit-appearance: none !important; appearance: none !important; }
+            
+            .disease-form input[type="radio"], .disease-form input[type="checkbox"] { border: 1px solid #000 !important; appearance: none !important; border-radius: 0 !important; top: 0 !important; margin-right: 6px !important;}
+            .disease-form input[type="radio"]:checked::before, .disease-form input[type="checkbox"]:checked::before { content: '✓'; position: absolute; top: -5px; left: 1px; font-size: 14px; font-weight: bold; color: #000; }
+            
+            .box { background: transparent !important; padding: 0 !important; border: none !important; margin-bottom: 0.5rem !important; }
+            .a4-sheet table { margin: 8px 0 !important; border-color: #000 !important; table-layout: fixed; }
+            .a4-sheet th, .a4-sheet td { border: 1px solid #000 !important; padding: 4px !important; font-size: 12px !important; }
+            .a4-sheet th { background-color: transparent !important; }
+            .a4-sheet textarea { border: none !important; border-bottom: 1px dotted #000 !important; background: transparent !important; padding: 0 !important; }
+        }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Config ของโรงพยาบาล/หน่วยงาน
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_sPvnDoVn_DWTgAm4_YOE64xXh1uAhWM",
+            authDomain: "epidemiology-9aa8c.firebaseapp.com",
+            projectId: "epidemiology-9aa8c",
+            storageBucket: "epidemiology-9aa8c.firebasestorage.app",
+            messagingSenderId: "261265216174",
+            appId: "1:261265216174:web:b3e5ef41faf2ab32db133f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        window.currentUser = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'epidemiology-app';
+
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase Auth Error:", error);
+            }
+        };
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => { window.currentUser = user; });
+
+        const getCollectionPath = () => {
+            const uid = window.currentUser ? window.currentUser.uid : 'anonymous';
+            return `artifacts/${appId}/users/${uid}/EpidemiologyRecords`;
+        };
+
+        // 💾 ฟังก์ชัน บันทึกข้อมูล
+        window.saveToFirebase = async () => {
+            if (!window.currentUser && auth.currentUser) window.currentUser = auth.currentUser;
+            if (!window.currentUser) {
+                alert("ระบบยังเชื่อมต่อฐานข้อมูลไม่สำเร็จ!");
+                return window.showToast('❌ ขาดการเชื่อมต่อฐานข้อมูล');
+            }
+
+            window.showToast('⏳ กำลังบันทึกข้อมูล...');
+            try {
+                const data = window.getFormData();
+                const diseaseVal = document.getElementById('disease-selector').value;
+                const diseaseSelect = document.getElementById('disease-selector');
+                
+                const activeForm = document.getElementById(`form-${diseaseVal}`);
+                const nameInputs = Array.from(activeForm.querySelectorAll('input[type="text"]'));
+                const nameInput = nameInputs.find(inp => inp.placeholder && inp.placeholder.includes('ชื่อ'));
+                
+                data.timestamp = new Date().toISOString();
+                data.patient_name = (nameInput && nameInput.value.trim() !== '') ? nameInput.value : 'ไม่ระบุชื่อผู้ป่วย';
+                data.disease_label = diseaseSelect.options[diseaseSelect.selectedIndex].text;
+
+                const path = getCollectionPath();
+                
+                if (window.currentDocId) {
+                    await setDoc(doc(db, path, window.currentDocId), data);
+                    window.showToast('☁️ ✅ อัปเดตข้อมูลสำเร็จ');
+                } else {
+                    const docRef = await addDoc(collection(db, path), data);
+                    window.currentDocId = docRef.id;
+                    window.showToast('☁️ ✅ บันทึกข้อมูลใหม่สำเร็จ');
+                }
+
+                setTimeout(() => { window.openDashboard(); }, 800);
+            } catch (e) {
+                console.error(e);
+                window.showToast('❌ บันทึกล้มเหลว');
+            }
+        };
+
+        // 📊 ฟังก์ชัน โหลดตารางข้อมูล
+        window.openDashboard = async () => {
+            if (!window.currentUser && auth.currentUser) window.currentUser = auth.currentUser;
+            if (!window.currentUser) return window.showToast('❌ ขาดการเชื่อมต่อฐานข้อมูล');
+            
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('dashboard-container').style.display = 'block';
+            document.querySelector('.print-btn').style.display = 'none';
+            
+            const tbody = document.getElementById('dashboard-tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-blue-600 font-bold">⏳ กำลังดึงข้อมูลจาก Firebase...</td></tr>';
+            
+            const selectAllBtn = document.getElementById('selectAllBtn');
+            if(selectAllBtn) selectAllBtn.checked = false;
+
+            try {
+                const path = getCollectionPath();
+                const querySnapshot = await getDocs(collection(db, path));
+                
+                let records = [];
+                querySnapshot.forEach((doc) => { records.push({ docId: doc.id, ...doc.data() }); });
+                
+                records.sort((a, b) => (b.timestamp || 0).localeCompare(a.timestamp || 0));
+                
+                if (records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-500">ไม่มีข้อมูลที่บันทึกไว้</td></tr>';
+                } else {
+                    tbody.innerHTML = '';
+                    records.forEach((rec, idx) => {
+                        window.recordsCache[rec.docId] = rec;
+                        let dateStr = '-';
+                        if(rec.timestamp) {
+                            const dateObj = new Date(rec.timestamp);
+                            dateStr = `${dateObj.toLocaleDateString('th-TH')} ${dateObj.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}`;
+                        }
+                        
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-gray-50 border-b";
+                        tr.innerHTML = `
+                            <td class="p-3 text-center"><input type="checkbox" class="export-cb w-4 h-4 text-blue-600 cursor-pointer" value="${rec.docId}"></td>
+                            <td class="p-3 text-center">${idx + 1}</td>
+                            <td class="p-3 font-medium text-blue-800">${rec.patient_name || '-'}</td>
+                            <td class="p-3">${rec.disease_label || '-'}</td>
+                            <td class="p-3 text-sm text-gray-500">${dateStr}</td>
+                            <td class="p-3 text-center">
+                                <button type="button" onclick="editRecord('${rec.docId}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded shadow-sm mr-2 transition">✏️ แก้ไข</button>
+                                <button type="button" onclick="deleteRecord('${rec.docId}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm transition">🗑️ ลบ</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+                window.showToast('✅ โหลดข้อมูลสำเร็จ');
+                window.updateFoodDatalist(); // อัปเดตเมนูอาหารที่เคยลงไว้
+            } catch (e) {
+                console.error(e);
+                window.showToast('❌ โหลดข้อมูลไม่สำเร็จ');
+            }
+        };
+
+        // 🚀 ฟังก์ชัน ส่งออก Excel (ฉบับอัปเกรด ดึงชื่อหัวข้อตามหน้าฟอร์ม และรองรับ Dynamic Rows)
+        window.exportSelectedToExcel = async () => {
+            const checkboxes = document.querySelectorAll('.export-cb:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                alert('⚠️ กรุณาติ๊กเลือกข้อมูลในตารางอย่างน้อย 1 รายการเพื่อส่งออก');
+                return;
+            }
+
+            window.showToast('⏳ กำลังดึงและจัดเรียงข้อมูลลง Excel...');
+            try {
+                const dataToExport = [];
+                let exportIndex = 1;
+                const currentFormData = window.getFormData(); 
+
+                selectedIds.forEach(id => {
+                    const raw = window.recordsCache[id];
+                    if (raw) {
+                        window.setFormData(raw);
+                        const diseaseVal = raw['_selected_disease'];
+                        const form = document.getElementById('form-' + diseaseVal);
+                        
+                        const row = {
+                            "ลำดับ": exportIndex++,
+                            "วันที่บันทึก": raw.timestamp ? new Date(raw.timestamp).toLocaleString('th-TH') : '',
+                            "โรคที่สอบสวน": raw.disease_label || ''
+                        };
+
+                        if (form) {
+                            const inputs = form.querySelectorAll('input, select, textarea');
+                            let currentMainLabel = 'ข้อมูลทั่วไป'; 
+                            
+                            inputs.forEach(inp => {
+                                let colName = '';
+                                
+                                if(inp.closest('td')) {
+                                    let table = inp.closest('table');
+                                    let td = inp.closest('td');
+                                    let tr = td.closest('tr');
+                                    let colIndex = Array.from(tr.children).indexOf(td);
+                                    let headers = table.querySelectorAll('thead th');
+                                    if(headers[colIndex]) {
+                                        // ลบข้อความในปุ่ม + ออกจากหัวตาราง
+                                        colName = headers[colIndex].innerText.replace('+', '').trim();
+                                    }
+                                    else colName = 'ข้อมูลตาราง';
+                                } 
+                                else {
+                                    let prev = inp.previousElementSibling;
+                                    if (prev && (prev.classList.contains('lbl') || prev.classList.contains('lbl-b'))) {
+                                        colName = prev.innerText.replace(/:/g, '').trim();
+                                        currentMainLabel = colName; 
+                                    } else if (inp.closest('.rl')) {
+                                        let firstSpan = inp.closest('.rl').querySelector('.lbl, .lbl-b');
+                                        if(firstSpan) currentMainLabel = firstSpan.innerText.replace(/:/g, '').trim();
+                                    }
+                                }
+
+                                if (!colName) {
+                                    if (inp.placeholder) colName = inp.placeholder;
+                                    else colName = currentMainLabel + ' (ระบุ)';
+                                }
+
+                                if (inp.type === 'radio') {
+                                    if (inp.checked) {
+                                        let labelNode = inp.closest('label');
+                                        let radioText = labelNode ? labelNode.innerText.trim() : 'เลือกแล้ว';
+                                        row[currentMainLabel || colName] = radioText;
+                                    }
+                                } else if (inp.type === 'checkbox') {
+                                    if (inp.checked) {
+                                        let labelNode = inp.closest('label');
+                                        let chkText = labelNode ? labelNode.innerText.trim() : colName;
+                                        row[chkText] = '✔️ มี/ใช่';
+                                    }
+                                } else {
+                                    if (inp.value && inp.value.trim() !== '') {
+                                        let finalColName = colName;
+                                        let count = 1;
+                                        while(row[finalColName] !== undefined && row[finalColName] !== inp.value) {
+                                            finalColName = `${colName} (${count++})`;
+                                        }
+                                        row[finalColName] = inp.value;
+                                    }
+                                }
+                            });
+                        }
+                        
+                        dataToExport.push(row);
+                    }
+                });
+
+                window.setFormData(currentFormData);
+
+                if (dataToExport.length === 0) return alert('ไม่มีข้อมูลสำหรับส่งออก');
+
+                const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Epidemiology_Data");
+                
+                XLSX.writeFile(workbook, `Epi_Report_${new Date().toLocaleDateString('th-TH').replace(/\//g,'-')}.xlsx`);
+                window.showToast('📊 ✅ ดาวน์โหลด Excel สำเร็จ');
+            } catch (e) {
+                console.error(e);
+                alert("เกิดข้อผิดพลาดในการส่งออก Excel");
+            }
+        };
+
+        // 🗑️ ฟังก์ชัน ลบข้อมูล
+        window.deleteRecord = async (id) => {
+            if (!confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้?')) return;
+            try {
+                const path = getCollectionPath();
+                await deleteDoc(doc(db, path, id));
+                window.showToast('🗑️ ลบสำเร็จ');
+                window.openDashboard();
+            } catch (e) { alert("ลบไม่สำเร็จ: " + e.message); }
+        };
+    </script>
+
+    <script>
+        window.currentDocId = null;
+        window.recordsCache = {};
+
+        function toggleDisease() {
+            const val = document.getElementById('disease-selector').value;
+            document.querySelectorAll('.disease-form').forEach(el => { el.style.display = 'none'; el.classList.remove('active-form'); });
+            const activeForm = document.getElementById('form-' + val);
+            if(activeForm) { activeForm.style.display = 'flex'; activeForm.classList.add('active-form'); }
+        }
+
+        window.showToast = function(msg) {
+            const t = document.getElementById("toast"); t.innerText = msg; t.className = "show";
+            setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+        }
+
+        function initializeInputIds() {
+            const inputs = document.querySelectorAll('.disease-form input, .disease-form select, .disease-form textarea');
+            inputs.forEach((input, i) => { 
+                // ไม่สร้าง ID ให้กับช่องที่มีคลาส exclude-auto (เช่น ฟอร์มอาหารแบบ dynamic)
+                if (!input.id && !input.classList.contains('exclude-auto')) {
+                    input.id = 'epi_f_' + i; 
+                }
+            });
+        }
+
+        // ================= ฟังก์ชันจัดการฟอร์มอาหาร (Dynamic Rows) =================
+        window.addFoodToCell = function(btn) {
+            const td = btn.closest('td');
+            const group = td.querySelector('.food-item-group').cloneNode(true);
+            
+            // ล้างค่าที่ค้างอยู่
+            group.querySelectorAll('input').forEach(inp => inp.value = '');
+            
+            // เปลี่ยนปุ่มเป็น "ลบ"
+            const actionBtn = group.querySelector('.action-add-btn, .action-del-btn');
+            actionBtn.innerHTML = '🗑️ ลบ';
+            actionBtn.className = 'text-red-500 hover:text-red-700 text-[11px] font-bold no-print action-del-btn bg-red-50 px-2 py-0.5 rounded';
+            actionBtn.onclick = function() { group.remove(); };
+            
+            td.appendChild(group);
+        };
+
+        window.updateFoodDatalist = function() {
+            const foodSet = new Set();
+            Object.values(window.recordsCache).forEach(rec => {
+                if (rec.food_history_items && Array.isArray(rec.food_history_items)) {
+                    rec.food_history_items.forEach(f => {
+                        if(f && f.trim() !== '') foodSet.add(f.trim());
+                    });
+                }
+            });
+            const dl = document.getElementById('existing-food-menus');
+            if (dl) {
+                dl.innerHTML = '';
+                foodSet.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f;
+                    dl.appendChild(opt);
+                });
+            }
+        };
+        // ========================================================================
+
+        window.getFormData = function() {
+            const data = {};
+            document.querySelectorAll('.disease-form input, .disease-form select, .disease-form textarea').forEach(input => {
+                if (!input.classList.contains('exclude-auto')) {
+                    if (input.type === 'checkbox' || input.type === 'radio') data[input.id] = input.checked;
+                    else data[input.id] = input.value;
+                }
+            });
+            data['_selected_disease'] = document.getElementById('disease-selector').value;
+
+            // จัดการบันทึกตารางอาหาร (รองรับ Dynamic Rows)
+            const foodTable = document.getElementById('food-history-table');
+            if (foodTable) {
+                const history = [];
+                const foodItemsList = []; 
+                foodTable.querySelectorAll('tbody tr').forEach((tr) => {
+                    const dayDate = tr.querySelector('.day-date').value;
+                    const meals = ['breakfast', 'lunch', 'dinner'];
+                    const dayData = { date: dayDate, meals: {} };
+                    
+                    meals.forEach((meal, mIdx) => {
+                        const td = tr.querySelectorAll('td')[mIdx + 1];
+                        const items = [];
+                        td.querySelectorAll('.food-item-group').forEach(group => {
+                            const food = group.querySelector('.food-name-input').value;
+                            const source = group.querySelector('.food-source-input').value;
+                            const shared = group.querySelector('.food-shared-input').value;
+                            if (food || source || shared) {
+                                items.push({ food, source, shared });
+                                if (food) foodItemsList.push(food.trim());
+                            }
+                        });
+                        dayData.meals[meal] = items;
+                    });
+                    history.push(dayData);
+                });
+                data['_food_history'] = history;
+                data['food_history_items'] = foodItemsList; // เก็บไว้ทำ Datalist ตอนโหลด
+            }
+
+            return data;
+        }
+
+        window.setFormData = function(data) {
+            if (!data) return;
+            if(data['_selected_disease']) {
+                document.getElementById('disease-selector').value = data['_selected_disease'];
+                toggleDisease();
+            }
+            document.querySelectorAll('.disease-form input, .disease-form select, .disease-form textarea').forEach(input => {
+                if (!input.classList.contains('exclude-auto') && data[input.id] !== undefined) {
+                    if (input.type === 'checkbox' || input.type === 'radio') input.checked = data[input.id];
+                    else input.value = data[input.id];
+                }
+            });
+
+            // จัดการโหลดตารางอาหาร
+            if (data['_food_history']) {
+                const foodTable = document.getElementById('food-history-table');
+                if (foodTable) {
+                    const trs = foodTable.querySelectorAll('tbody tr');
+                    data['_food_history'].forEach((dayData, dayIdx) => {
+                        if (trs[dayIdx]) {
+                            const tr = trs[dayIdx];
+                            tr.querySelector('.day-date').value = dayData.date || '';
+                            const meals = ['breakfast', 'lunch', 'dinner'];
+                            meals.forEach((meal, mIdx) => {
+                                const td = tr.querySelectorAll('td')[mIdx + 1];
+                                
+                                // เคลียร์ฟอร์มอาหารที่งอกมาทั้งหมด เหลือแค่อันแรกไว้เป็น Template
+                                const groups = td.querySelectorAll('.food-item-group');
+                                groups.forEach((g, i) => { if (i > 0) g.remove(); });
+                                
+                                const items = dayData.meals[meal] || [];
+                                items.forEach((item, i) => {
+                                    let group = td.querySelectorAll('.food-item-group')[i];
+                                    if (!group) {
+                                        // ถ้ารายการใน Database มีมากกว่า 1 ให้สร้างฟอร์มใหม่รอรับ
+                                        group = td.querySelector('.food-item-group').cloneNode(true);
+                                        const actionBtn = group.querySelector('.action-add-btn, .action-del-btn');
+                                        actionBtn.innerHTML = '🗑️ ลบ';
+                                        actionBtn.className = 'text-red-500 hover:text-red-700 text-[11px] font-bold no-print action-del-btn bg-red-50 px-2 py-0.5 rounded';
+                                        actionBtn.onclick = function() { group.remove(); };
+                                        td.appendChild(group);
+                                    }
+                                    group.querySelector('.food-name-input').value = item.food || '';
+                                    group.querySelector('.food-source-input').value = item.source || '';
+                                    group.querySelector('.food-shared-input').value = item.shared || '';
+                                });
+                                
+                                // ถ้าไม่มีข้อมูลเลย ให้เคลียร์ Template อันแรก
+                                if (items.length === 0) {
+                                    const group = td.querySelector('.food-item-group');
+                                    group.querySelector('.food-name-input').value = '';
+                                    group.querySelector('.food-source-input').value = '';
+                                    group.querySelector('.food-shared-input').value = '';
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+        }
+
+        window.clearForm = function() {
+            document.querySelectorAll('.disease-form input, .disease-form select:not(#disease-selector), .disease-form textarea').forEach(input => {
+                if (!input.classList.contains('exclude-auto')) {
+                    if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
+                    else input.value = '';
+                }
+            });
+
+            const foodTable = document.getElementById('food-history-table');
+            if (foodTable) {
+                foodTable.querySelectorAll('tbody tr').forEach(tr => {
+                    tr.querySelector('.day-date').value = '';
+                    tr.querySelectorAll('td').forEach((td, idx) => {
+                        if (idx > 0) { 
+                            const groups = td.querySelectorAll('.food-item-group');
+                            groups.forEach((g, i) => { if (i > 0) g.remove(); });
+                            if(groups[0]) {
+                                groups[0].querySelectorAll('input').forEach(inp => inp.value = '');
+                            }
+                        }
+                    });
+                });
+            }
+        }
+
+        window.createNew = function() {
+            window.currentDocId = null; 
+            window.clearForm();
+            document.getElementById('dashboard-container').style.display = 'none';
+            document.getElementById('form-container').style.display = 'flex';
+            document.querySelector('.print-btn').style.display = 'flex';
+            window.showToast('✨ ฟอร์มว่างพร้อมกรอกข้อมูลใหม่');
+        }
+
+        window.editRecord = (id) => {
+            if (window.recordsCache[id]) {
+                window.currentDocId = id; 
+                window.setFormData(window.recordsCache[id]);
+                document.getElementById('dashboard-container').style.display = 'none';
+                document.getElementById('form-container').style.display = 'flex';
+                document.querySelector('.print-btn').style.display = 'flex';
+                window.showToast('📝 โหมดแก้ไขข้อมูล');
+            }
+        };
+
+        window.toggleSelectAll = function() {
+            const selectAllStatus = document.getElementById('selectAllBtn').checked;
+            const checkboxes = document.querySelectorAll('.export-cb');
+            checkboxes.forEach(cb => { cb.checked = selectAllStatus; });
+        };
+
+        window.addEventListener('DOMContentLoaded', () => { toggleDisease(); initializeInputIds(); });
+    </script>
+</head>
+<body>
+
+    <div id="toast">Message</div>
+
+    <div class="system-controller no-print">
+        <div class="controller-group">
+            <svg class="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            <label>เลือกแบบสอบสวนโรค :</label>
+            <select id="disease-selector" onchange="toggleDisease()">
+                <option value="fp">โรคอาหารเป็นพิษ (Food poisoning)</option>
+                <option value="dengue">โรคไข้เลือดออก (Dengue fever)</option>
+                <option value="rabies">โรคพิษสุนัขบ้า (Rabies)</option>
+                <option value="aefi">เหตุการณ์ไม่พึงประสงค์ (AEFI)</option>
+            </select>
+        </div>
+
+        <div class="controller-group">
+            <button type="button" onclick="saveToFirebase()" class="action-btn primary">☁️ บันทึกข้อมูล</button>
+            <button type="button" onclick="openDashboard()" class="action-btn">📊 จัดการข้อมูล</button>
+            <button type="button" onclick="createNew()" class="action-btn text-green-600">✨ สร้างใหม่</button>
+        </div>
+    </div>
+
+    <div id="dashboard-container" style="display:none;" class="w-full max-w-5xl bg-white rounded-xl shadow-lg p-8 mb-8 no-print border border-gray-200">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-blue-800">รายการแบบสอบสวนโรคทั้งหมด</h2>
+            <div class="flex gap-3">
+                <button type="button" onclick="exportSelectedToExcel()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow font-medium flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    ดาวน์โหลด Excel (ที่เลือก)
+                </button>
+                <button type="button" onclick="createNew()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg shadow font-medium">✨ สร้างใหม่</button>
+            </div>
+        </div>
+        <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="w-full border-collapse bg-white text-left">
+                <thead class="bg-blue-50 text-blue-900 border-b-2 border-blue-100">
+                    <tr>
+                        <th class="p-4 w-12 text-center" title="เลือกทั้งหมด">
+                            <input type="checkbox" id="selectAllBtn" onclick="toggleSelectAll()" class="w-4 h-4 text-blue-600 cursor-pointer">
+                        </th>
+                        <th class="p-4 w-16 text-center">ลำดับ</th>
+                        <th class="p-4">ชื่อ-สกุล ผู้ป่วย</th>
+                        <th class="p-4">โรคที่สอบสวน</th>
+                        <th class="p-4">วันที่บันทึก</th>
+                        <th class="p-4 w-48 text-center">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody id="dashboard-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="form-container" class="w-full flex flex-col items-center">
+        
+        <div id="form-fp" class="disease-form">
+            <div class="a4-sheet">
+                <div class="text-center font-bold text-xl mb-4">แบบสอบสวนโรคอาหารเป็นพิษ (Food poisoning)</div>
+                <div class="sec-title">1. ข้อมูลทั่วไป</div>
+                
+                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest"><span class="lbl">อายุ</span><input type="number" class="inp w-16"><span class="lbl">ปี</span><input type="number" class="inp w-16"><span class="lbl">เดือน</span></div>
+                <div class="rl"><span class="lbl">เพศ</span><label><input type="radio" name="fp_g">ชาย</label><label><input type="radio" name="fp_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"><span class="lbl">ศาสนา</span><input type="text" class="inp w-24"><span class="lbl">เชื้อชาติ</span><input type="text" class="inp w-24"><span class="lbl">อาชีพ</span><input type="text" class="inp flex-1"></div>
+                <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
+                
+                <div class="box mt-4">
+                    <div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชื่อหมู่บ้าน/ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div>
+                    <div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1"></div>
+                    <div class="rl"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="fp_a1">เทศบาลนคร</label><label><input type="radio" name="fp_a1">เทศบาลเมือง</label><label><input type="radio" name="fp_a1">เทศบาลตำบล</label><label><input type="radio" name="fp_a1">อบต.</label></div>
+                </div>
+
+                <div class="box">
+                    <div class="rl"><span class="lbl-b">ภูมิลำเนา</span><span class="lbl ml-2">เป็นที่เดียวกับที่อยู่ขณะป่วยหรือไม่</span><label><input type="radio" name="fp_s">ใช่</label><label><input type="radio" name="fp_s">ไม่ใช่ ระบุ</label><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชื่อชุมชน</span><input type="text" class="inp flex-1"></div>
+                    <div class="rl"><span class="lbl">ซอย</span><input type="text" class="inp w-32"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48"><span class="lbl">อำเภอ</span><input type="text" class="inp flex-1"></div>
+                    <div class="rl"><span class="lbl">จังหวัด</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="fp_a2">เทศบาลนคร</label><label><input type="radio" name="fp_a2">เทศบาลเมือง</label><label><input type="radio" name="fp_a2">เทศบาลตำบล</label><label><input type="radio" name="fp_a2">อบต.</label></div>
+                </div>
+
+                <div class="rl"><span class="lbl">ชื่อ-สกุล ผู้ปกครอง (กรณี < 15 ปี)</span><input type="text" class="inp flex-1"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"></div>
+
+                <div class="sec-title">2. อาการและอาการแสดง</div>
+                <div class="rl box"><span class="lbl">มีอาการป่วยหรือไม่</span><label><input type="radio" name="fp_ss">ไม่มี</label><label><input type="radio" name="fp_ss" checked>มี</label><span class="lbl ml-4">วันที่เริ่มป่วย</span><input type="date" class="inp w-32"><span class="lbl">เวลา</span><input type="time" class="inp w-24"><span class="lbl">น.</span></div>
+                <div class="rl"><span class="lbl-b underline">การตรวจร่างกายแรกรับ</span><span class="lbl ml-4">อุณหภูมิกาย</span><input type="text" class="inp w-16"><span class="lbl">°C</span><span class="lbl ml-4">ชีพจร</span><input type="text" class="inp w-16"><span class="lbl">ครั้ง/นาที</span><span class="lbl ml-4">ความดัน</span><input type="text" class="inp w-16"><span class="lbl">mmHg</span><span class="lbl ml-4">หายใจ</span><input type="text" class="inp w-16"><span class="lbl">ครั้ง/นาที</span></div>
+                
+                <div class="grid grid-cols-2 gap-x-8 gap-y-2 mt-4 text-[13.5px] print:text-[12.5px]">
+                    <script>
+                        ['ถ่ายเป็นน้ำ|ครั้ง','ถ่ายเหลว|ครั้ง','ถ่ายมีมูก','ถ่ายมีเลือด','ไข้','ปวดศีรษะ','ปวดมวนท้อง','ปวดท้อง','ตะคริวที่ท้อง','ตะคริวที่ขา','คลื่นไส้','อาเจียน','อ่อนเพลีย','ความดันโลหิตต่ำ','ท้องอืด','กล้ามเนื้ออ่อนแรง','ปากแห้ง','เห็นภาพซ้อน','ถ่ายกะปริบกะปรอย','เหงื่อออกตัวเย็น','ช็อก','ปวดเบ่ง','ท้องผูก','ถ่ายมีกลิ่นเหม็นคาว'].forEach((s, i) => {
+                            let text = s.includes('|') ? `${s.split('|')[0]} <input type="number" class="inp w-16"> ${s.split('|')[1]}` : s;
+                            document.write(`<div class="rl !mb-0 border-b print:border-none pb-1 justify-between"><span class="lbl">${text}</span><div><label><input type="radio" name="fps${i}">มี</label><label><input type="radio" name="fps${i}">ไม่มี</label><label><input type="radio" name="fps${i}">ไม่ทราบ</label></div></div>`);
+                        });
+                    </script>
+                    <div class="col-span-2 rl !mb-0 mt-2 justify-between"><div class="flex-1 rl !mb-0"><span class="lbl">ชา (ระบุอวัยวะ)</span><input type="text" class="inp w-48"></div><div><label><input type="radio" name="fps25">มี</label><label><input type="radio" name="fps25">ไม่มี</label><label><input type="radio" name="fps25">ไม่ทราบ</label></div></div>
+                    <div class="col-span-2 rl !mb-0"><span class="lbl">อื่น ๆ</span><input type="text" class="inp flex-1"></div>
+                </div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">3. การตรวจทางห้องปฏิบัติการ</div>
+                <div class="lbl-b mb-2">3.1 วิธีส่งเพาะเชื้อหรือตรวจด้วยวิธีอื่น ๆ</div>
+                <div class="box space-y-2">
+                    <script>
+                        ['อุจจาระ', 'Rectal swab', 'อาเจียน', 'อาหาร', 'น้ำ/น้ำแข็ง'].forEach((l, i) => {
+                            document.write(`<div class="rl !mb-0"><span class="lbl w-24">${l}</span><label><input type="radio" name="fplab${i}">ไม่ได้ตรวจ</label><label><input type="radio" name="fplab${i}">ตรวจ</label><span class="lbl ml-2">วิธีตรวจ</span><input type="text" class="inp flex-1"><span class="lbl">วันที่ส่ง</span><input type="date" class="inp w-32"></div><div class="rl ml-24 print:ml-20 border-b pb-2 print:border-none"><span class="lbl">ผล</span><input type="text" class="inp w-32"><span class="lbl">รพ.ที่ส่งตรวจ</span><input type="text" class="inp flex-1"></div>`);
+                        });
+                    </script>
+                </div>
+                <div class="lbl-b mb-2 mt-4">3.2 ทดสอบการสร้างสารพิษของเชื้อที่เพาะขึ้น</div>
+                <div class="rl"><label><input type="radio" name="fl6">ไม่ได้ตรวจ</label><label><input type="radio" name="fl6">ตรวจ</label><span class="lbl ml-2">วิธีตรวจ</span><input type="text" class="inp flex-1"><span class="lbl">วันที่ส่ง</span><input type="date" class="inp w-32"><span class="lbl">ผล</span><input type="text" class="inp w-24"></div>
+                <div class="rl ml-4"><span class="lbl">ห้องปฏิบัติการที่ส่งตรวจ</span><input type="text" class="inp flex-1"></div>
+
+                <div class="lbl-b mb-2 mt-4">3.3 ทดสอบสารพิษ หรือสารเคมี</div>
+                <div class="rl"><label><input type="radio" name="fl7">ไม่ได้ตรวจ</label><label><input type="radio" name="fl7">ตรวจ</label><span class="lbl ml-2">วิธีตรวจ</span><input type="text" class="inp flex-1"><span class="lbl">วันที่ส่ง</span><input type="date" class="inp w-32"><span class="lbl">ผล</span><input type="text" class="inp w-24"></div>
+                <div class="rl ml-4"><span class="lbl">ห้องปฏิบัติการที่ส่งตรวจ</span><input type="text" class="inp flex-1"></div>
+
+                <div class="sec-title mt-6">4. การรักษา</div>
+                <div class="rl"><span class="lbl">4.1 ไปรับการตรวจรักษาครั้งแรกที่</span><input type="text" class="inp flex-1"></div>
+                <div class="rl"><span class="lbl">วันที่</span><input type="text" class="inp w-16 text-center"><span class="lbl">เดือน</span><input type="text" class="inp w-24 text-center"><span class="lbl">พ.ศ.</span><input type="text" class="inp w-16 text-center"></div>
+                <div class="rl box mt-2"><span class="lbl-b">การรักษาครั้งนี้:</span><span class="lbl ml-4">วันที่พบผู้ป่วย</span><input type="date" class="inp w-32"><span class="lbl">เวลา</span><input type="time" class="inp w-24"><span class="lbl">น.</span></div>
+                <div class="rl ml-4"><label class="w-32"><input type="radio" name="ft1">ได้พบแพทย์</label><label class="w-48"><input type="radio" name="ft1">พบจนท.สาธารณสุข</label><label><input type="radio" name="ft1">อื่น ๆ ระบุ</label><input type="text" class="inp flex-1"></div>
+                <div class="rl ml-4"><span class="lbl-b w-24">ประเภทผู้ป่วย</span><label><input type="radio" name="ft2">ผู้ป่วยนอก</label><label><input type="radio" name="ft2">ผู้ป่วยใน</label><label><input type="radio" name="ft2">ค้นหาได้เพิ่มเติมในชุมชน</label></div>
+                <div class="rl ml-4"><span class="lbl-b w-24">ผลการรักษา</span><label><input type="radio" name="ft3">กำลังรักษา</label><label><input type="radio" name="ft3">หาย</label><label><input type="radio" name="ft3">เสียชีวิต</label><label><input type="radio" name="ft3">ส่งต่อ ระบุ</label><input type="text" class="inp flex-1"></div>
+                <div class="rl ml-32 print:ml-24"><span class="lbl">สถานที่รักษา</span><input type="text" class="inp flex-1"><span class="lbl ml-4">วันที่จำหน่าย</span><input type="date" class="inp w-32"></div>
+
+                <div class="rl mt-4 ml-4"><span class="lbl-b text-blue-600 print:text-black">ยาปฏิชีวนะ/ยาต้านไวรัส ที่ได้รับในการป่วยครั้งนี้</span></div>
+                <div class="rl ml-4"><label><input type="radio" name="fa1">ไม่ได้รับ</label><label class="lbl-b ml-4"><input type="radio" name="fa1">ได้รับ ระบุ</label></div>
+                <div class="ml-24 print:ml-20 space-y-1">
+                    <div class="rl !mb-0"><span class="lbl">1.</span><input type="text" class="inp flex-1"><span class="lbl ml-4">วันที่ได้รับ</span><input type="date" class="inp w-32"></div>
+                    <div class="rl !mb-0"><span class="lbl">2.</span><input type="text" class="inp flex-1"><span class="lbl ml-4">วันที่ได้รับ</span><input type="date" class="inp w-32"></div>
+                    <div class="rl !mb-0"><span class="lbl">3.</span><input type="text" class="inp flex-1"><span class="lbl ml-4">วันที่ได้รับ</span><input type="date" class="inp w-32"></div>
+                </div>
+
+                <div class="box mt-4">
+                    <div class="rl"><span class="lbl-b w-64">ได้รับสารน้ำทดแทนทางหลอดเลือดดำ</span><label><input type="radio" name="fi1">ไม่ได้รับ</label><label><input type="radio" name="fi1">ได้รับ</label><label><input type="radio" name="fi1">ไม่ทราบ</label></div>
+                    <div class="rl"><span class="lbl-b w-64">ได้รับสารละลายน้ำตาลเกลือแร่ (ORS) หรือไม่</span><label><input type="radio" name="fi2">ไม่ได้รับ</label><label><input type="radio" name="fi2">ได้รับ</label><label><input type="radio" name="fi2">ไม่ทราบ</label></div>
+                </div>
+
+                <div class="rl mt-4"><span class="lbl">4.2 ป่วยครั้งนี้ได้รับยาปฏิชีวนะกินเอง ก่อนไปรับการตรวจรักษาหรือไม่</span></div>
+                <div class="rl ml-6"><label><input type="radio" name="fm1">ไม่ได้รับ</label><label class="lbl-b"><input type="radio" name="fm1">ได้รับ ระบุชื่อยา</label><input type="text" class="inp flex-1"><span class="lbl ml-2">วันที่เริ่มกิน</span><input type="date" class="inp w-32"><span class="lbl">ถึง</span><input type="date" class="inp w-32"></div>
+                <div class="rl ml-6"><span class="lbl">ขนาดของยาที่ได้รับ</span><input type="text" class="inp w-32"><span class="lbl">ครั้ง</span><input type="number" class="inp w-12 text-center"><span class="lbl">วัน</span><span class="lbl-b ml-6">ทานยาสม่ำเสมอทุกมื้อหรือไม่</span><label><input type="radio" name="fm2">ไม่ใช่</label><label><input type="radio" name="fm2">ใช่</label></div>
+
+                <div class="rl mt-4"><span class="lbl">4.3 ในกรณีได้รับ Toxin ของเชื้อ มีการล้างท้อง (Gastric lavage) หรือไม่</span><label class="ml-4"><input type="radio" name="flv1">ไม่ได้รับ</label><label><input type="radio" name="flv1">ได้รับ</label><label><input type="radio" name="flv1">ไม่ทราบ</label></div>
+                <div class="rl mt-2"><span class="lbl">4.4 ในกรณีได้รับ Toxin ของเชื้อ ได้รับ Antitoxin หรือไม่</span><label class="ml-4"><input type="radio" name="fan1">ไม่ได้รับ</label><label><input type="radio" name="fan1">ได้รับ</label><label><input type="radio" name="fan1">ไม่ทราบ</label></div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">5. ปัจจัยเสี่ยงต่อการเกิดโรค</div>
+                <div class="lbl-b mb-4">5.1 พฤติกรรมเสี่ยง/ปัจจัยเสี่ยง (การบริโภค/เมนูอาหาร) ช่วง 3 วัน ก่อนป่วย</div>
+                <div class="pl-4 space-y-4 print:space-y-2">
+                    <script>
+                        [{t:'ไก่ หรือสัตว์ปีกชนิดอื่น ๆ', t2:'เนื้อ', t3:'เครื่องใน'},{t:'หมู', t2:'เนื้อ', t3:'เครื่องใน'},{t:'วัว', t2:'เนื้อ', t3:'เครื่องใน'},{t:'สัตว์ชนิดอื่น ๆ ระบุ', i:true, t2:'เนื้อ', t3:'เครื่องใน'},{t:'ปลา', skip:true}].forEach((r, idx) => {
+                            let mid = r.skip ? `<span class="w-[150px] inline-block print:hidden"></span>` : `<label><input type="checkbox">${r.t2}</label><label><input type="checkbox">${r.t3}</label><label><input type="checkbox">อื่นๆ ระบุ</label><input type="text" class="inp w-24">`;
+                            document.write(`<div class="box"><div class="rl"><label class="lbl-b w-32"><input type="checkbox">${r.t}</label>${r.i?'<input type="text" class="inp w-16 mx-2">':''}${mid}<span class="lbl-b bg-blue-100 px-2 py-1 rounded print:bg-transparent ml-4">ปรุงสุก</span><label><input type="radio" name="fr${idx}">ไม่ใช่</label><label><input type="radio" name="fr${idx}">ใช่</label></div><div class="rl ml-8"><span class="lbl text-gray-500 print:text-black">แหล่งที่มา</span><label><input type="checkbox">ปรุงเอง</label><label><input type="checkbox">ซื้อ/ร้านอาหาร ระบุแหล่ง</label><input type="text" class="inp flex-1"></div></div>`);
+                        });
+                    </script>
+                    <div class="box">
+                        <div class="rl"><label class="lbl-b"><input type="checkbox">นม ระบุชนิด</label><input type="text" class="inp w-32"><span class="lbl ml-4">แหล่งผลิต</span><input type="text" class="inp flex-1"></div>
+                        <div class="rl ml-8"><label><input type="radio" name="fmk1">ไม่ได้ฆ่าเชื้อ</label><label><input type="radio" name="fmk1">ฆ่าเชื้อโดย</label><label><input type="checkbox">ต้ม</label><label><input type="checkbox">พาสเจอไรซ์</label><label><input type="checkbox">สเตอริไลส์</label></div>
+                    </div>
+                    <script>
+                        ['ไข่','ผลิตภัณฑ์จากสัตว์ (เช่น ไส้กรอก แหนม) ระบุ'].forEach((r, idx) => {
+                            let inpt = idx===1 ? `<input type="text" class="inp flex-1">` : '';
+                            document.write(`<div class="box"><div class="rl"><label class="lbl-b"><input type="checkbox">${r}</label>${inpt} ${idx===0?'<span class="lbl-b bg-blue-100 px-2 py-1 rounded print:bg-transparent ml-4">ปรุงสุก</span><label><input type="radio" name="fpe'+idx+'">ไม่ใช่</label><label><input type="radio" name="fpe'+idx+'">ใช่</label>':''}</div>${idx===1?'<div class="rl ml-8"><span class="lbl-b bg-blue-100 px-2 py-1 rounded print:bg-transparent">ปรุงสุก</span><label><input type="radio" name="fe1">ไม่ใช่</label><label><input type="radio" name="fe1">ใช่</label></div>':''}<div class="rl ml-8"><span class="lbl text-gray-500 print:text-black">แหล่งที่มา</span><label><input type="checkbox">ปรุงเอง</label><label><input type="checkbox">ซื้อ/ร้านอาหาร ระบุแหล่ง</label><input type="text" class="inp flex-1"></div></div>`);
+                        });
+                        ['ผักสด/สลัดผัก/ส้มตำ ระบุเมนู','แซนด์วิช/อาหารไม่ผ่านความร้อน ระบุ','ขนม ระบุ','อาหารหมักดอง ระบุ'].forEach((r, idx) => {
+                            let ext = idx===0 ? `<span class="lbl-b ml-4">ผลไม้ ระบุแหล่ง</span><input type="text" class="inp flex-1">` : ``;
+                            document.write(`<div class="box"><div class="rl"><label class="lbl-b"><input type="checkbox">${r}</label><input type="text" class="inp flex-1">${ext}</div><div class="rl ml-8"><span class="lbl text-gray-500 print:text-black">แหล่งที่มา</span><label><input type="checkbox">ปรุงเอง</label><label><input type="checkbox">ซื้อ/ร้านอาหาร ระบุแหล่ง</label><input type="text" class="inp flex-1"></div></div>`);
+                        });
+                    </script>
+                </div>
+                <div class="box mt-4">
+                    <div class="rl"><span class="lbl-b w-48">5.2 น้ำดื่มที่ดื่มประจำ</span><label><input type="checkbox">ต้ม</label><label><input type="checkbox">ไม่ต้ม</label><label><input type="checkbox">กรอง</label><label><input type="checkbox">ขวดมาตรฐาน</label></div>
+                    <div class="rl mt-2"><span class="lbl-b w-48">5.3 แหล่งน้ำบริโภคประจำวัน</span><label><input type="checkbox">ประปา</label><label><input type="checkbox">บาดาล</label><label><input type="checkbox">ฝน</label><label><input type="checkbox">แม่น้ำ/คลอง</label></div>
+                    <div class="rl ml-[200px] print:ml-48"><label><input type="checkbox">น้ำดื่มบรรจุขวด ยี่ห้อ</label><input type="text" class="inp w-32"><label class="ml-4"><input type="checkbox">อื่น ๆ ระบุ</label><input type="text" class="inp flex-1"></div>
+                </div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="lbl-b mb-2 mt-4 flex items-center justify-between">
+                    <span>5.4 ประวัติการรับประทานอาหารช่วง 3 วันก่อนเริ่มป่วย</span>
+                    <span class="text-xs text-gray-500 font-normal no-print">💡 กด + เพื่อเพิ่มเมนูในมื้อนั้น</span>
+                </div>
+                <datalist id="existing-food-menus"></datalist>
+                <table class="text-sm print:text-[11px] w-full" id="food-history-table">
+                    <thead>
+                        <tr>
+                            <th class="w-24">วันที่</th>
+                            <th class="w-[28%]">มื้อเช้า</th>
+                            <th class="w-[28%]">มื้อกลางวัน</th>
+                            <th class="w-[28%]">มื้อเย็น</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <script>
+                        for(let i=0;i<3;i++) { 
+                            let c = `<td class="text-left align-top p-2 border border-gray-200">
+                                <div class="food-item-group border-b border-gray-100 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                                    <div class="rl !mb-1"><span class="lbl text-gray-500 print:text-black text-[11px]">อาหาร</span><input type="text" class="inp flex-1 exclude-auto food-name-input text-[11px]" list="existing-food-menus" placeholder="ระบุเมนู"></div>
+                                    <div class="rl !mb-1"><span class="lbl text-gray-500 print:text-black text-[11px]">แหล่งซื้อ</span><input type="text" class="inp flex-1 exclude-auto food-source-input text-[11px]"></div>
+                                    <div class="rl !mb-0 flex justify-between items-center w-full"><div class="flex items-center"><span class="lbl text-gray-500 print:text-black text-[11px] mr-2">ผู้ร่วมวง</span><input type="number" class="inp w-10 text-center exclude-auto food-shared-input text-[11px]"></div><button type="button" class="text-blue-600 hover:text-blue-800 text-[11px] font-bold no-print action-add-btn bg-blue-50 px-2 py-0.5 rounded" onclick="addFoodToCell(this)">+ เพิ่ม</button></div>
+                                </div>
+                            </td>`; 
+                            document.write(`<tr><td class="align-top p-2 border border-gray-200"><input type="date" class="inp w-full text-xs print:text-[10px] exclude-auto day-date"></td>${c}${c}${c}</tr>`); 
+                        }
+                        </script>
+                    </tbody>
+                </table>
+
+                <div class="rl mt-6"><span class="lbl-b">5.5 อาหารที่สงสัยเป็นสาเหตุของการป่วยครั้งนี้ (ระบุ)</span><input type="text" class="inp flex-1"></div>
+                <div class="rl"><span class="lbl text-gray-500 print:text-black text-sm">(กรอกรายละเอียดเพิ่มเติมในตาราง ข้อ 7. Attack Rate)</span></div>
+                <div class="rl"><span class="lbl">วันที่รับประทาน</span><input type="date" class="inp w-32"><span class="lbl ml-4">เวลา</span><input type="time" class="inp w-24"><span class="lbl">น.</span><span class="lbl ml-4">ซื้อจากแหล่ง</span><input type="text" class="inp flex-1"></div>
+
+                <div class="box mt-6">
+                    <div class="rl"><span class="lbl-b">5.6 ประวัติการประกอบอาหาร ช่วง 3 วันก่อนป่วย</span><label class="ml-4"><input type="radio" name="fc1">1-4 ครั้ง</label><label><input type="radio" name="fc1">5-7 ครั้ง</label><label><input type="radio" name="fc1">8-10 ครั้ง</label></div>
+                    <div class="rl ml-4"><span class="lbl">ความถี่ในการประกอบอาหาร</span><input type="text" class="inp flex-1"></div>
+                    <div class="rl ml-4"><span class="lbl">วัตถุดิบที่ใช้ในการประกอบอาหาร ระบุ</span><input type="text" class="inp flex-1"></div>
+                    <div class="rl mt-4 ml-4"><span class="lbl">- มีการแยกเขียง/มีด สำหรับวัตถุดิบดิบกับสุก</span><label class="ml-6"><input type="radio" name="fc2">ไม่มี</label><label><input type="radio" name="fc2">มี</label></div>
+                    <div class="rl ml-4"><span class="lbl">- มีการแยกเขียงระหว่างเนื้อสัตว์และผัก</span><label class="ml-6"><input type="radio" name="fc3">ไม่มี</label><label><input type="radio" name="fc3">มี</label></div>
+                </div>
+            </div>
+            <div class="a4-sheet">
+                <div class="sec-title">6. การค้นหาผู้สัมผัสโรค</div>
+                <div class="rl"><span class="lbl">6.1 รายชื่อผู้สัมผัสร่วมบ้าน/โรงเรียน/ชุมชน (ละแวกเดียวกัน) ของผู้ป่วยรายนี้</span></div>
+                <div class="rl mb-4"><span class="lbl">จำนวน</span><input type="number" class="inp w-16 text-center"><span class="lbl">คน (ระบุ)</span></div>
+                <table class="text-sm print:text-[10px]">
+                    <thead><tr><th rowspan="2" class="w-8">ที่</th><th rowspan="2" class="w-32">ชื่อ-สกุล</th><th colspan="3">มีอาการป่วย</th><th colspan="3">ผลเพาะเชื้อจากสิ่งส่งตรวจ</th></tr>
+                    <tr><th class="w-10">ไม่มี</th><th class="w-20">เริ่มป่วย</th><th class="w-24">อาการ</th><th class="w-20">อุจจาระ</th><th class="w-20">Rectal swab</th><th class="w-20">อาเจียน</th></tr></thead>
+                    <tbody><script>for(let i=1;i<=16;i++){ let r = `<td class="text-left text-[11px] print:text-[9px]"><label><input type="radio" name="fcx${i}">พบเชื้อ</label><br><label><input type="radio" name="fcx${i}">ไม่พบ</label></td>`; document.write(`<tr><td>${i}</td><td><input type="text" class="inp w-full"></td><td><input type="checkbox"></td><td><input type="date" class="inp w-full text-[9px] px-0"></td><td><input type="text" class="inp w-full"></td>${r}${r}${r}</tr>`); }</script></tbody>
+                </table>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">7. ตาราง Attack Rate</div>
+                <table class="text-sm print:text-[11px]">
+                    <thead><tr><th rowspan="2" class="w-1/4">อาหารหรือเครื่องดื่ม</th><th colspan="4" class="bg-blue-50">กลุ่มที่กินอาหารที่สงสัย</th><th colspan="4" class="bg-gray-50">กลุ่มที่ไม่ได้กินอาหารที่สงสัย</th></tr>
+                    <tr><th class="w-10 text-red-600">ป่วย</th><th class="w-10 text-green-600">ไม่ป่วย</th><th class="w-10">รวม</th><th class="w-16">AR(%)</th><th class="w-10 text-red-600">ป่วย</th><th class="w-10 text-green-600">ไม่ป่วย</th><th class="w-10">รวม</th><th class="w-16">AR(%)</th></tr></thead>
+                    <tbody><script>for(let i=0;i<6;i++){ document.write(`<tr><td><input type="text" class="inp w-full"></td><td class="bg-blue-50"><input type="number" class="inp w-full text-center text-red-600 font-bold"></td><td class="bg-blue-50"><input type="number" class="inp w-full text-center"></td><td class="bg-blue-50"><input type="number" class="inp w-full text-center font-bold"></td><td class="bg-blue-50"><input type="text" class="inp w-full text-center font-bold text-blue-600"></td><td class="bg-gray-50"><input type="number" class="inp w-full text-center text-red-600 font-bold"></td><td class="bg-gray-50"><input type="number" class="inp w-full text-center"></td><td class="bg-gray-50"><input type="number" class="inp w-full text-center font-bold"></td><td class="bg-gray-50"><input type="text" class="inp w-full text-center font-bold text-blue-600"></td></tr>`); }</script></tbody>
+                </table>
+
+                <div class="grid grid-cols-2 gap-x-12 gap-y-4 mt-12 print:mt-8 px-4">
+                    <script>
+                        ['ผู้ให้ข้อมูล','หมายเลขโทรศัพท์','ชื่อผู้สอบสวน','ตำแหน่ง','หน่วยงาน','จังหวัด อำเภอ','วันที่สอบสวน','หมายเลขโทรศัพท์'].forEach((l,i)=>{
+                            let inp = i===6 ? `<input type="date" class="inp flex-1">` : `<input type="text" class="inp flex-1">`;
+                            document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span>${inp}</div>`);
+                        });
+                    </script>
+                </div>
+
+                <div class="mt-12 bg-yellow-50 border border-yellow-200 p-4 rounded print:bg-transparent print:border-black print:p-2 text-sm">
+                    <span class="font-bold">หมายเหตุ:</span> ระยะฟักตัวของ S.aureus 30 นาที-8 ชม., C.perfringens 6-24 ชม., B.cereus 1-24 ชม., V.parahaemolyticus 12-24 ชม., V.vulnificus 12 ชม.-3 วัน
+                </div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="text-center font-bold text-lg mb-6">แบบค้นหาผู้ป่วยโรคอุจจาระร่วงเพิ่มเติม</div>
+                <div class="box rl"><span class="lbl-b">สถานที่เกิดเหตุ</span><input type="text" class="inp flex-1 text-lg print:text-sm"></div>
+                <table class="text-[11px] print:text-[10px]">
+                    <thead><tr><th rowspan="2" class="w-8">ที่</th><th rowspan="2" class="w-32">ชื่อ-สกุล</th><th rowspan="2" class="w-10">เพศ/อายุ</th><th colspan="2" class="bg-blue-50">รายการอาหาร (0=ไม่กิน, 1=กิน)</th><th colspan="3" class="bg-red-50">อาการป่วย (0=ไม่มี, 1=มี)</th><th rowspan="2" class="w-20">สิ่งส่งตรวจ</th><th rowspan="2" class="w-20">หมายเหตุ</th></tr>
+                    <tr><th class="bg-blue-50 w-16">ระบุ...</th><th class="w-20 bg-blue-50">วันเวลาที่กิน</th><th class="w-10 bg-red-50">ป่วย</th><th class="w-16 bg-red-50">เริ่มป่วย</th><th class="w-20 bg-red-50">ระบุอาการ</th></tr></thead>
+                    <tbody><script>for(let i=1;i<=15;i++){ document.write(`<tr><td class="font-medium">${i}</td><td><input type="text" class="inp w-full"></td><td><input type="text" class="inp w-full text-center"></td><td><input type="text" class="inp w-full text-center font-bold text-blue-600"></td><td><input type="text" class="inp w-full text-center"></td><td><input type="text" class="inp w-full text-center font-bold text-red-600"></td><td><input type="date" class="inp w-full text-[9px] px-0"></td><td><input type="text" class="inp w-full text-center"></td><td><input type="text" class="inp w-full text-center"></td><td><input type="text" class="inp w-full text-center"></td></tr>`); }</script></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="form-dengue" class="disease-form" style="display:none;">
+            <div class="a4-sheet">
+                <div class="text-center font-bold text-xl mb-6 print:mb-4">แบบสอบสวนไข้เลือดออก (Dengue fever)</div>
+                <div class="sec-title">1. ข้อมูลทั่วไป</div>
+                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest"><span class="lbl">อายุ</span><input type="number" class="inp w-16"><span class="lbl">ปี</span><input type="number" class="inp w-16"><span class="lbl">เดือน</span></div>
+                <div class="rl"><span class="lbl">เพศ</span><label><input type="radio" name="dg_g">ชาย</label><label><input type="radio" name="dg_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"><span class="lbl">ศาสนา</span><input type="text" class="inp w-24"><span class="lbl">สัญชาติ</span><input type="text" class="inp w-24"><span class="lbl">อาชีพ</span><input type="text" class="inp flex-1"></div>
+                <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
+                
+                <div class="box mt-4"><div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div><div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="dg_a1">เทศบาลนคร</label><label><input type="radio" name="dg_a1">เทศบาลเมือง</label><label><input type="radio" name="dg_a1">เทศบาลตำบล</label><label><input type="radio" name="dg_a1">อบต.</label></div></div>
+                <div class="box"><div class="rl"><span class="lbl-b">ภูมิลำเนา</span><span class="lbl ml-2">เป็นที่เดียวกับที่อยู่ขณะป่วยหรือไม่</span><label><input type="radio" name="dg_s">ใช่</label><label><input type="radio" name="dg_s">ไม่ใช่</label><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">ชุมชน</span><input type="text" class="inp w-64"><span class="lbl">ซอย</span><input type="text" class="inp w-32"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48"><span class="lbl">จังหวัด</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="dg_a2">นคร</label><label><input type="radio" name="dg_a2">เมือง</label><label><input type="radio" name="dg_a2">ตำบล</label><label><input type="radio" name="dg_a2">อบต.</label></div></div>
+                <div class="rl"><span class="lbl">ชื่อผู้ปกครอง</span><input type="text" class="inp flex-1"><span class="lbl">อาชีพ</span><input type="text" class="inp w-32"><span class="lbl">เกี่ยวข้องเป็น</span><input type="text" class="inp w-24"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-32"></div>
+
+                <div class="sec-title">2. อาการและอาการแสดง</div>
+                <div class="rl box"><span class="lbl">มีอาการป่วยหรือไม่</span><label><input type="radio" name="dg_ss">ไม่มี</label><label><input type="radio" name="dg_ss" checked>มี</label><span class="lbl ml-6">วันที่เริ่มป่วย</span><input type="date" class="inp w-32"><span class="lbl">เวลา</span><input type="time" class="inp w-24"><span class="lbl">น.</span></div>
+                <div class="rl"><span class="lbl-b underline">ตรวจร่างกายแรกรับ</span><span class="lbl ml-4">อุณหภูมิ</span><input type="text" class="inp w-16"><span class="lbl">°C</span><span class="lbl ml-4">ชีพจร</span><input type="text" class="inp w-16"><span class="lbl">ครั้ง/นาที</span><span class="lbl ml-4">หายใจ</span><input type="text" class="inp w-16"><span class="lbl">ครั้ง/นาที</span><span class="lbl ml-4">ความดัน</span><input type="text" class="inp w-16"><span class="lbl">mmHg</span></div>
+                
+                <div class="grid grid-cols-2 gap-x-8 gap-y-2 mt-4 text-[13.5px] print:text-[13px]">
+                    <script>
+                        ['ไข้/ไข้เฉียบพลัน','ปวดกล้ามเนื้อ','ปวดศีรษะ','ปวดกระดูกหรือข้อ','ปวดกระบอกตา','ตับโต','มีจุดเลือดออกตามผิวหนัง','ผื่นแดง','เลือดออกทางอวัยวะภายใน','ตาแดง','กลุ่มอาการทางเดินหายใจส่วนบน','มีภาวะช็อก'].forEach((s, i) => {
+                            document.write(`<div class="rl !mb-0 border-b print:border-none pb-1 justify-between"><span class="lbl">${s}</span><div><label><input type="radio" name="dgs${i}">มี</label><label><input type="radio" name="dgs${i}">ไม่มี</label><label><input type="radio" name="dgs${i}">ไม่ทราบ</label></div></div>`);
+                        });
+                    </script>
+                    <div class="rl !mb-0 justify-between"><span class="lbl">Tourniquet test</span><div><label><input type="radio" name="dg_tt">ทำ (ระบุ <input type="text" class="inp w-12 text-center">)</label><label><input type="radio" name="dg_tt">ไม่ทำ</label><label><input type="radio" name="dg_tt">ไม่ทราบ</label></div></div>
+                    <div class="rl !mb-0"><span class="lbl">อื่น ๆ ระบุ</span><input type="text" class="inp flex-1"></div>
+                </div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">3. การตรวจทางห้องปฏิบัติการ</div>
+                <div class="lbl-b mb-2">3.1 การตรวจหาความสมบูรณ์ของเม็ดเลือด CBC</div>
+                <table class="text-[12px] print:text-[11px]">
+                    <thead><tr><th class="w-1/6">CBC</th><th>ครั้งที่ 1 (วันที่ <input type="text" class="inp w-12"> เวลา <input type="text" class="inp w-10">)</th><th>ครั้งที่ 2 (วันที่ <input type="text" class="inp w-12"> เวลา <input type="text" class="inp w-10">)</th><th>ครั้งที่ 3 (วันที่ <input type="text" class="inp w-12"> เวลา <input type="text" class="inp w-10">)</th></tr></thead>
+                    <tbody><script>['Hct %', 'WBC', 'PMN %', 'Lymph %', 'Atypical Lymph %', 'Platelet', 'Albumin', 'อื่น ๆ'].forEach(l => { document.write(`<tr><td class="text-left font-medium">${l}</td><td><input type="text" class="inp w-full"></td><td><input type="text" class="inp w-full"></td><td><input type="text" class="inp w-full"></td></tr>`); });</script></tbody>
+                </table>
+                <div class="lbl-b mb-2 mt-4">3.2 การตรวจทางห้องปฏิบัติการจำเพาะ</div>
+                <div class="box space-y-3">
+                    <script>[{t:'PCR'},{t:'NS1 antigen'},{t:'Dengue IgM/IgG'},{t:'การเพาะแยกเชื้อ'},{t:'EIA'},{t:'อื่นๆ'}].forEach((l,i)=>{ document.write(`<div class="rl !mb-0"><span class="lbl w-32">${l.t}</span><label><input type="radio" name="dl${i}">ไม่ได้ตรวจ</label><label><input type="radio" name="dl${i}">ตรวจ สิ่งส่งตรวจ</label><input type="text" class="inp w-24"><span class="lbl">วันที่ส่ง</span><input type="date" class="inp w-28"><span class="lbl">ผล</span><input type="text" class="inp w-16"><span class="lbl ml-2">แล็บ</span><input type="text" class="inp flex-1"></div>`); });</script>
+                </div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">4. การรักษา</div>
+                <div class="rl"><label class="lbl-b text-red-600"><input type="checkbox"> ไม่ได้รับการรักษาใด ๆ</label></div>
+                <div class="rl"><label><input type="checkbox">ซื้อยากินเอง ชื่อยา</label><input type="text" class="inp w-32"><label class="ml-4"><input type="checkbox">รักษาสมุนไพร ชื่อยา</label><input type="text" class="inp w-32"></div>
+                <div class="rl mt-2"><label class="lbl-b"><input type="checkbox">ไปรับการตรวจรักษา</label><span class="lbl ml-4">เป็นการรักษาครั้งแรก?</span><label><input type="radio" name="dg_tx1">ใช่</label><label><input type="radio" name="dg_tx1">ไม่ใช่</label></div>
+                <div class="box mt-2 space-y-2">
+                    <div class="rl !mb-0"><span class="lbl">สถานที่รักษาครั้งแรก</span><input type="text" class="inp flex-1"><span class="lbl">วันที่มา รพ.</span><input type="date" class="inp w-32"><span class="lbl">เวลา</span><input type="time" class="inp w-24"></div>
+                    <div class="rl !mb-0"><span class="lbl">สถานที่รักษาครั้งที่ 2</span><input type="text" class="inp flex-1"><span class="lbl">วันที่มา รพ.</span><input type="date" class="inp w-32"><span class="lbl">เวลา</span><input type="time" class="inp w-24"></div>
+                    <div class="rl !mb-0"><span class="lbl">สถานที่วินิจฉัยโรคไข้เลือดออก</span><input type="text" class="inp flex-1"></div>
+                </div>
+                <div class="rl"><span class="lbl-b">การวินิจฉัยครั้งนี้</span><label><input type="radio" name="dg_dx">DF</label><label><input type="radio" name="dg_dx">DHF</label><label><input type="radio" name="dg_dx">DSS</label><label><input type="radio" name="dg_dx">EDS</label></div>
+                <div class="rl"><span class="lbl-b">ประเภทผู้ป่วย</span><label><input type="radio" name="dg_pt">นอก</label><label><input type="radio" name="dg_pt">ใน</label><label><input type="radio" name="dg_pt">ค้นหาเพิ่มเติม</label><span class="lbl-b ml-6">ผลการรักษา</span><label><input type="radio" name="dg_rs">กำลังรักษา</label><label><input type="radio" name="dg_rs">หาย</label><label><input type="radio" name="dg_rs">เสียชีวิต</label><label><input type="radio" name="dg_rs">ส่งต่อ ระบุ</label><input type="text" class="inp w-24"><span class="lbl ml-2">วันที่จำหน่าย</span><input type="date" class="inp w-32"></div>
+
+                <div class="sec-title mt-6">5. ประวัติการสัมผัสโรค (14 วันก่อนเริ่มป่วย)</div>
+                <div class="box space-y-2 text-sm print:text-[13px]">
+                    <div class="rl !mb-0"><label><input type="checkbox">ไปทำงานกับผู้ป่วยไข้เลือดออก</label><label class="ml-4"><input type="checkbox">มีคนรู้จักเป็น</label><label class="ml-4"><input type="checkbox">คนในครอบครัวเป็น</label><label class="ml-4"><input type="checkbox">ที่โรงเรียนมีคนเป็น</label></div>
+                    <div class="rl !mb-0"><label><input type="checkbox">บ้านอยู่ละแวกเดียวกับผู้ป่วย ในรัศมี</label><label><input type="radio" name="dgr">0-25ม.</label><label><input type="radio" name="dgr">26-50ม.</label><label><input type="radio" name="dgr">51-100ม.</label><label><input type="radio" name="dgr">>100ม.</label></div>
+                    <div class="rl !mb-0"><label><input type="checkbox">เดินทางไปพื้นที่อื่นที่มีผู้ป่วย ระบุ</label><input type="text" class="inp flex-1"></div>
+                    <div class="rl !mb-0"><label><input type="checkbox">เคยรับวัคซีนไข้เลือดออก ชนิด</label><input type="text" class="inp w-32"><span class="lbl">จำนวน</span><input type="number" class="inp w-12 text-center"><span class="lbl">ครั้งล่าสุดเมื่อ</span><input type="date" class="inp w-32"></div>
+                </div>
+
+                <div class="sec-title mt-6">6. การค้นหาผู้สัมผัสโรค (ก่อนป่วย 14 วัน ถึง หลังป่วย 5 วัน)</div>
+                <div class="rl"><span class="lbl">6.1 รายชื่อผู้สัมผัสร่วมบ้าน/โรงเรียน/ชุมชน สงสัยไข้เลือดออก จำนวน</span><input type="number" class="inp w-16 text-center"><span class="lbl">คน</span></div>
+                <table class="text-sm print:text-[11px]">
+                    <thead><tr><th class="w-8">ที่</th><th class="w-48">ชื่อ-สกุล</th><th class="w-10">อายุ</th><th>เพศ</th><th>อาการป่วย / วันที่ / ที่อยู่</th><th class="w-24">ความสัมพันธ์</th></tr></thead>
+                    <tbody><script>for(let i=1;i<=3;i++){ document.write(`<tr><td>${i}</td><td><input type="text" class="inp w-full"></td><td><input type="text" class="inp w-full text-center"></td><td><input type="text" class="inp w-full text-center"></td><td class="text-left py-1"><div class="rl !mb-1"><label><input type="radio" name="dgc${i}">ไม่มี</label><label><input type="radio" name="dgc${i}">มีอาการ</label><input type="text" class="inp w-24 text-[10px]"><span class="lbl text-xs">เริ่มป่วย</span><input type="date" class="inp w-20 text-[9px] px-0"></div><div class="rl !mb-0"><span class="lbl text-xs">ที่อยู่</span><input type="text" class="inp flex-1 text-[10px]"></div></td><td><input type="text" class="inp w-full"></td></tr>`); }</script></tbody>
+                </table>
+                <div class="lbl mt-4">6.2 ประวัติเดินทางก่อนป่วย 14 วัน และหลังป่วย 5 วัน</div>
+                <div class="rl"><span class="lbl">1.</span><input type="text" class="inp flex-1"><span class="lbl">วันที่เดินทาง</span><input type="date" class="inp w-32"><span class="lbl ml-4">2.</span><input type="text" class="inp flex-1"><span class="lbl">วันที่เดินทาง</span><input type="date" class="inp w-32"></div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">7. ปัจจัยเสี่ยงต่อการเกิดโรค (สำรวจลูกน้ำยุงลาย)</div>
+                <table class="text-sm print:text-[10px] text-center">
+                    <thead><tr><th class="w-20">วันที่</th><th class="w-32">การสำรวจ</th><th>บ้านผู้ป่วย</th><th>รอบบ้าน (100ม.)</th><th>โรงเรียน</th><th>วัด</th><th>อื่น ๆ</th></tr></thead>
+                    <tbody><script>['วันที่ 0','วันที่ 3','วันที่ 7','วันที่ 14'].forEach(d=>{ document.write(`<tr><td rowspan="5" class="bg-blue-50 align-top pt-4 font-bold">${d}</td><td class="bg-blue-50 text-left">จำนวนภาชนะที่สำรวจ</td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td></tr><tr><td class="text-left">จำนวนที่พบลูกน้ำ</td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td><td><input type="number" class="inp w-full text-center"></td></tr><tr><td class="bg-gray-50 text-left font-bold text-red-600 print:text-black">HI (%)</td><td class="bg-gray-50"><input type="text" class="inp w-full text-center font-bold text-red-600 print:text-black"></td><td class="bg-gray-50"><input type="text" class="inp w-full text-center font-bold text-red-600 print:text-black"></td><td class="bg-gray-50"><input type="text" class="inp w-full text-center font-bold text-red-600 print:text-black"></td><td class="bg-gray-50"><input type="text" class="inp w-full text-center font-bold text-red-600 print:text-black"></td><td class="bg-gray-50"><input type="text" class="inp w-full text-center font-bold text-red-600 print:text-black"></td></tr><tr><td class="text-left font-bold text-green-600 print:text-black">CI (%)</td><td><input type="text" class="inp w-full text-center font-bold text-green-600 print:text-black"></td><td><input type="text" class="inp w-full text-center font-bold text-green-600 print:text-black"></td><td><input type="text" class="inp w-full text-center font-bold text-green-600 print:text-black"></td><td><input type="text" class="inp w-full text-center font-bold text-green-600 print:text-black"></td><td><input type="text" class="inp w-full text-center font-bold text-green-600 print:text-black"></td></tr><tr><td class="bg-gray-50 border-b-2 border-b-black text-left font-bold text-blue-600 print:text-black">BI</td><td class="bg-gray-50 border-b-2 border-b-black"><input type="text" class="inp w-full text-center font-bold text-blue-600 print:text-black"></td><td class="bg-gray-50 border-b-2 border-b-black"><input type="text" class="inp w-full text-center font-bold text-blue-600 print:text-black"></td><td class="bg-gray-50 border-b-2 border-b-black"><input type="text" class="inp w-full text-center font-bold text-blue-600 print:text-black"></td><td class="bg-gray-50 border-b-2 border-b-black"><input type="text" class="inp w-full text-center font-bold text-blue-600 print:text-black"></td><td class="bg-gray-50 border-b-2 border-b-black"><input type="text" class="inp w-full text-center font-bold text-blue-600 print:text-black"></td></tr>`); });</script></tbody>
+                </table>
+                <div class="sec-title mt-6">มาตรการเบื้องต้น</div>
+                <div class="rl"><span class="lbl">การพ่นฆ่ายุง วันที่</span><input type="date" class="inp w-32"><span class="lbl">ครั้งที่</span><input type="number" class="inp w-12 text-center"><span class="lbl ml-4">วันที่</span><input type="date" class="inp w-32"><span class="lbl">ครั้งที่</span><input type="number" class="inp w-12 text-center"></div>
+                <div class="grid grid-cols-2 gap-4 mt-8 print:mt-4">
+                    <script>['ผู้ให้ข้อมูล','โทรศัพท์','ผู้สอบสวน','ตำแหน่ง','หน่วยงาน','จังหวัด อำเภอ'].forEach(l=>{ document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="text" class="inp flex-1"></div>`); });</script>
+                </div>
+            </div>
+        </div>
+
+        <div id="form-rabies" class="disease-form" style="display:none;">
+            <div class="a4-sheet">
+                <div class="text-center font-bold text-xl mb-4">แบบสอบสวนโรคพิษสุนัขบ้า (Rabies)</div>
+                <div class="sec-title">1. ข้อมูลทั่วไป</div>
+                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest"></div>
+                <div class="rl"><span class="lbl">อายุ</span><input type="number" class="inp w-16"><span class="lbl">ปี</span><span class="lbl ml-4">เพศ</span><label><input type="radio" name="rb_g">ชาย</label><label><input type="radio" name="rb_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"><span class="lbl">อาชีพ</span><input type="text" class="inp flex-1"></div>
+                <div class="rl box mt-4"><span class="lbl-b w-32">ระดับการศึกษาสูงสุด</span><label><input type="radio" name="rbe">ไม่เคยเรียน</label><label><input type="radio" name="rbe">ประถม</label><label><input type="radio" name="rbe">มัธยม</label><label><input type="radio" name="rbe">ป.ตรี</label><label><input type="radio" name="rbe">อาชีวะ</label><label><input type="radio" name="rbe">สูงกว่า ป.ตรี</label></div>
+                <div class="rl ml-4"><span class="lbl-b w-32">รายได้ต่อเดือน</span><label><input type="radio" name="rbi">< 10k</label><label><input type="radio" name="rbi">10k-25k</label><label><input type="radio" name="rbi">> 25k</label><span class="lbl-b ml-6">ลักษณะที่อยู่</span><input type="text" class="inp flex-1"></div>
+                <div class="rl ml-4"><span class="lbl-b w-32">สิทธิรักษาพยาบาล</span><label><input type="radio" name="rbi2">ไม่มีสิทธิ</label><label><input type="radio" name="rbi2">ประกันสังคม</label><label><input type="radio" name="rbi2">บัตรทอง</label><label><input type="radio" name="rbi2">ข้าราชการ</label><label><input type="radio" name="rbi2">อื่นๆ</label><input type="text" class="inp flex-1"></div>
+                
+                <div class="rl mt-4"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-12"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ตำบล</span><input type="text" class="inp w-32"><span class="lbl">อำเภอ</span><input type="text" class="inp w-32"><span class="lbl">จังหวัด</span><input type="text" class="inp w-32"></div>
+                <div class="rl"><span class="lbl">พิกัด GPS</span><input type="text" class="inp flex-1"><span class="lbl-b ml-4">ลักษณะชุมชน</span><label><input type="radio" name="rba1">เขตเมือง</label><label><input type="radio" name="rba1">ชนบท</label><label><input type="radio" name="rba1">อื่นๆ</label></div>
+                
+                <div class="sec-title mt-6">2. อาการและอาการแสดง</div>
+                <div class="rl"><span class="lbl">วันที่เริ่มป่วย</span><input type="date" class="inp w-32"><span class="lbl">เวลา</span><input type="time" class="inp w-24"></div>
+                <div class="grid grid-cols-2 gap-x-8 gap-y-2 mt-4 text-[13.5px] print:text-[13px]">
+                    <script>
+                        ['ไข้','ปวดศีรษะ','กลัวน้ำ','กระวนกระวาย ลุกลี้ลุกลน','กลัวลม','กลัวแสง','สะดุ้งตกใจง่าย','ไม่รู้สึกตัวสลับไปสลับมา','กลืนลำบาก','ชัก/กล้ามเนื้อกระตุก','น้ำลายมาก ถ่มน้ำลาย','ชา/เจ็บ บริเวณที่ถูกกัด','หายใจลำบาก','ซึม ไม่รู้สึกตัว','อัมพาต กล้ามเนื้ออ่อนแรง','เห็นภาพหลอน/อาละวาด','คันรอบแผลที่กัด','หลั่งอสุจิไม่รู้ตัว'].forEach((s, i) => {
+                            document.write(`<div class="rl !mb-0 border-b print:border-none pb-1 justify-between"><span class="lbl w-48 whitespace-normal leading-tight">${s}</span><div class="shrink-0"><label><input type="radio" name="rbs${i}">มี</label><label><input type="radio" name="rbs${i}">ไม่มี</label><label><input type="radio" name="rbs${i}">ไม่ทราบ</label></div></div>`);
+                        });
+                    </script>
+                </div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">3. การตรวจทางห้องปฏิบัติการ</div>
+                <table class="text-sm print:text-[11px] text-center">
+                    <thead><tr><th class="w-16">สถานะ</th><th class="w-20">สิ่งส่งตรวจ</th><th class="w-24">วันที่เก็บ</th><th>วิธี/สถานที่ตรวจ</th><th class="w-24">ผล</th></tr></thead>
+                    <tbody><script>['น้ำลาย','น้ำไขสันหลัง','ปัสสาวะ','ปมรากผม','เนื้อสมอง (กรณีเสียชีวิต)'].forEach((l,i)=>{ document.write(`<tr><td class="bg-gray-50 font-bold">${i===4?'เสียชีวิต':'ตอนมีชีวิต'}</td><td>${l}</td><td><input type="date" class="inp w-full text-[10px] px-0"></td><td class="text-left"><input type="text" class="inp w-full" placeholder="วิธี/รพ."></td><td><label><input type="radio" name="rbl${i}">บวก</label> <label><input type="radio" name="rbl${i}">ลบ</label></td></tr>`); });</script></tbody>
+                </table>
+
+                <div class="sec-title">5. ประวัติสัตว์ที่กัดและการสัมผัสโรค (14 วันก่อนป่วย)</div>
+                <div class="box space-y-2 text-[14px] print:text-[13px]">
+                    <div class="rl !mb-0"><span class="lbl-b w-40">1. ชนิดสัตว์</span><label><input type="radio" name="rbt1">สัตว์เลี้ยง</label><label><input type="radio" name="rbt1">สัตว์ป่า</label><span class="lbl ml-4">ระบุชนิด</span><label><input type="radio" name="rbt2">สุนัข</label><label><input type="radio" name="rbt2">แมว</label><label><input type="radio" name="rbt2">อื่น</label><input type="text" class="inp flex-1"></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-40">2. วันที่ถูกกัด/ข่วน</span><input type="text" class="inp w-48"><label><input type="checkbox">ไม่ทราบ</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-40">3. การรับเชื้อ</span><label><input type="radio" name="rbe">ถูกกัด</label><label><input type="radio" name="rbe">ถูกข่วน</label><label><input type="radio" name="rbe">ถูกเลีย</label><label><input type="radio" name="rbe">คลุกคลี</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-40">4. อายุสัตว์</span><label><input type="radio" name="rba">< 3 ด.</label><label><input type="radio" name="rba">3-6 ด.</label><label><input type="radio" name="rba">6-12 ด.</label><label><input type="radio" name="rba">> 1 ปี</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-40">5. สถานภาพสัตว์</span><label><input type="radio" name="rbst">มีเจ้าของ</label><label><input type="radio" name="rbst">ไม่มีเจ้าของ</label><span class="lbl-b ml-4">6. การกักขังดูอาการ</span><label><input type="radio" name="rbq">ตายภายใน 10 วัน</label><label><input type="radio" name="rbq">ไม่ตาย</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-40">7. ประวัติวัคซีนของสัตว์</span><label><input type="radio" name="rbv">ไม่ได้รับ</label><label><input type="radio" name="rbv">ได้รับ</label><label><input type="radio" name="rbv">ไม่ทราบ</label><span class="lbl ml-4">ฉีดล่าสุด</span><label><input type="radio" name="rbvt">ใน 1 ปี</label><label><input type="radio" name="rbvt">เกิน 1 ปี</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-40">8. การส่งหัวสัตว์ตรวจ</span><label><input type="radio" name="rbh">ไม่ได้ส่ง</label><label><input type="radio" name="rbh">ส่งตรวจ</label><span class="lbl ml-4">ผล</span><label class="text-red-600 font-bold"><input type="radio" name="rbhr">พบเชื้อ</label><label><input type="radio" name="rbhr">ไม่พบ</label></div>
+                </div>
+                
+                <div class="sec-title mt-4">12. บริเวณที่ถูกสัมผัสและความรุนแรง</div>
+                <table class="text-sm print:text-[11px] text-center">
+                    <thead><tr><th rowspan="2">อวัยวะ</th><th colspan="3">ลักษณะสัมผัส</th><th colspan="2">ความรุนแรง</th></tr><tr><th>กัด</th><th>ข่วน</th><th>เลีย</th><th>มีเลือดออก/มีแผล</th><th>ไม่มีเลือด/ไม่มีแผล</th></tr></thead>
+                    <tbody><script>['ศีรษะ','หน้า','ลำคอ','มือ/แขน','ลำตัว','ขา/เท้า'].forEach(b=>{ document.write(`<tr><td class="text-left">${b}</td><td><input type="checkbox"></td><td><input type="checkbox"></td><td><input type="checkbox"></td><td><input type="radio" name="rbsev_${b}"></td><td><input type="radio" name="rbsev_${b}"></td></tr>`); });</script></tbody>
+                </table>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">7. การปฏิบัติเมื่อถูกกัด/ข่วน/น้ำลาย</div>
+                <div class="box space-y-2 text-sm print:text-[13px]">
+                    <div class="rl !mb-0"><span class="lbl-b w-48">1. การล้างแผล</span><label><input type="radio" name="rbw">ไม่ได้ล้าง</label><label><input type="radio" name="rbw">ล้างด้วยน้ำเปล่า</label><label><input type="radio" name="rbw">สบู่/ผงซักฟอก</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-48">2. การใช้ยาใส่แผล</span><label><input type="radio" name="rban">ไม่ได้ใช้</label><label><input type="radio" name="rban">เบตาดีน/ไอโอดีน</label><label><input type="radio" name="rban">แอลกอฮอล์</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-48">3. การเย็บแผล</span><label><input type="radio" name="rbsu">ไม่ได้เย็บ</label><label><input type="radio" name="rbsu">เย็บแผลที่ รพ.</label></div>
+                </div>
+
+                <div class="sec-title">8. ประวัติวัคซีน/อิมมูโนโกลบูลิน (ของผู้ป่วย)</div>
+                <div class="box space-y-2 text-sm print:text-[13px]">
+                    <div class="rl !mb-0"><span class="lbl-b w-48">1. การได้รับวัคซีนมาก่อนโดนกัด</span><label><input type="radio" name="rbp">ไม่เคย/น้อยกว่า 3 เข็ม</label><label><input type="radio" name="rbp">เคยฉีด >= 3 เข็ม</label></div>
+                    <div class="rl !mb-0"><span class="lbl-b w-48">2. อิมมูโนโกลบูลินหลังโดนกัด</span><label><input type="radio" name="rbig">ไม่ได้</label><label><input type="radio" name="rbig">ERIG</label><label><input type="radio" name="rbig">HRIG</label><span class="lbl ml-4">วันที่</span><input type="date" class="inp w-32"></div>
+                    <div class="rl !mb-0 mt-4"><span class="lbl-b text-blue-600">3. ประวัติฉีดวัคซีน (เข็มกระตุ้นหลังโดนกัด)</span><label class="ml-4"><input type="radio" name="rbva">ไม่ได้ฉีด</label><label><input type="radio" name="rbva">ฉีด รวม <input type="number" class="inp w-12"> เข็ม</label></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-12 print:mt-8 px-4">
+                    <script>['ผู้ให้ข้อมูล','โทรศัพท์','ผู้สอบสวน','ตำแหน่ง','หน่วยงาน','จังหวัด อำเภอ'].forEach(l=>{ document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="text" class="inp flex-1"></div>`); });</script>
+                </div>
+            </div>
+        </div>
+
+        <div id="form-aefi" class="disease-form" style="display:none;">
+            <div class="a4-sheet">
+                <div class="text-center font-bold text-xl mb-4 text-blue-800 print:text-black">แบบสอบสวนเหตุการณ์ไม่พึงประสงค์หลังรับวัคซีน (AEFI)</div>
+                <div class="sec-title">(1) ข้อมูลผู้ป่วย</div>
+                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>ด.ช.</option><option>ด.ญ.</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl ml-4">บัตรประชาชน</span><input type="text" class="inp w-48 text-center"></div>
+                <div class="rl"><span class="lbl">อายุขณะป่วย</span><input type="number" class="inp w-12"><span class="lbl">ปี</span><input type="number" class="inp w-12"><span class="lbl">ด.</span><span class="lbl ml-4">เพศ</span><label><input type="radio" name="ae_g">ชาย</label><label><input type="radio" name="ae_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"></div>
+                <div class="rl"><span class="lbl">ที่อยู่ขณะป่วย</span><input type="text" class="inp flex-1"></div>
+                
+                <div class="sec-title mt-6">(2) ข้อมูลวัคซีน/สถานที่รับวัคซีน</div>
+                <div class="rl"><span class="lbl">สถานที่รับวัคซีน</span><input type="text" class="inp flex-1"><label class="ml-4"><input type="radio" name="aev">ภาครัฐ</label><label><input type="radio" name="aev">เอกชน</label></div>
+                <div class="rl"><span class="lbl">ชนิดวัคซีน (ที่สงสัย)</span><input type="text" class="inp w-48"><span class="lbl">ตัวทำละลาย</span><input type="text" class="inp w-48"></div>
+
+                <div class="sec-title mt-6">(3) ข้อมูลที่เกี่ยวข้องก่อนรับวัคซีน</div>
+                <table class="text-sm print:text-[12px] text-left">
+                    <thead><tr><th class="w-[60%]">ข้อมูล</th><th class="w-24 text-center">ใช่/ไม่ใช่</th><th>รายละเอียด</th></tr></thead>
+                    <tbody><script>['เคยป่วยอดีตคล้ายครั้งนี้?','เคยป่วยหลังรับวัคซีนครั้งก่อน?','แพ้วัคซีน/ยา/อาหาร?','ช่วง 30 วันก่อน มีอาการป่วย?','มีโรคประจำตัว/ใช้ยาอยู่?'].forEach((q,i)=>{ document.write(`<tr><td>${q}</td><td class="text-center"><label class="!mr-2"><input type="radio" name="aeq${i}">ใช่</label> <label class="!mr-0"><input type="radio" name="aeq${i}">ไม่</label></td><td><input type="text" class="inp w-full"></td></tr>`); });</script></tbody>
+                </table>
+                <div class="rl box mt-2"><span class="lbl-b text-pink-600">สำหรับผู้หญิง:</span><span class="lbl ml-4">ตั้งครรภ์</span><label><input type="radio" name="aep">ใช่</label><label><input type="radio" name="aep">ไม่ใช่</label><span class="lbl ml-8">ให้นมบุตร</span><label><input type="radio" name="aeb">ใช่</label><label><input type="radio" name="aeb">ไม่ใช่</label></div>
+
+                <div class="sec-title mt-6">(4) อาการ/การรักษา/การวินิจฉัย</div>
+                <div class="rl"><span class="lbl">วันที่เริ่มมีอาการ</span><input type="date" class="inp w-32"><span class="lbl">เวลา</span><input type="time" class="inp w-24"></div>
+                <table class="text-sm print:text-[11px] text-left">
+                    <thead><tr><th>อาการที่พบตามลำดับ (AEFI)</th><th>การวินิจฉัยของแพทย์</th></tr></thead>
+                    <tbody><tr><td><textarea class="w-full h-16"></textarea></td><td><textarea class="w-full h-16"></textarea></td></tr></tbody>
+                </table>
+                <div class="rl mt-4"><span class="lbl-b w-32">สภาพผู้ป่วยปัจจุบัน</span><label><input type="radio" name="aes">หาย</label><label><input type="radio" name="aes">กำลังรักษา</label><label><input type="radio" name="aes">พิการ</label><label class="text-red-600 font-bold"><input type="radio" name="aes">เสียชีวิต</label><span class="lbl ml-4">วันที่ตาย</span><input type="date" class="inp w-32"></div>
+            </div>
+
+            <div class="a4-sheet">
+                <div class="sec-title">(6) ข้อมูลการให้บริการและลูกโซ่ความเย็น (Cold Chain)</div>
+                <div class="box space-y-2 text-sm print:text-[13px]">
+                    <div class="rl !mb-0 justify-between"><span class="lbl-b w-[400px] whitespace-normal leading-tight print:flex-1">1. ใช้ AD syringes ในการให้วัคซีนหรือไม่</span><div class="shrink-0"><label><input type="radio" name="aex1">ใช่</label><label><input type="radio" name="aex1">ไม่ใช่</label></div></div>
+                    <div class="rl !mb-0 justify-between"><span class="lbl-b w-[400px] whitespace-normal leading-tight print:flex-1">2. ใช้เข็มฉีดยาเดียวกันดูดวัคซีนหลายขวดหรือไม่</span><div class="shrink-0"><label><input type="radio" name="aex2">ใช่</label><label><input type="radio" name="aex2">ไม่ใช่</label></div></div>
+                    <div class="rl !mb-0 justify-between"><span class="lbl-b w-[400px] whitespace-normal leading-tight print:flex-1">3. วัคซีนและตัวทำละลายเป็นของบริษัทเดียวกันหรือไม่</span><div class="shrink-0"><label><input type="radio" name="aex3">ใช่</label><label><input type="radio" name="aex3">ไม่ใช่</label></div></div>
+                    <div class="rl !mb-0 mt-4 border-t pt-2 justify-between"><span class="lbl-b w-[400px] whitespace-normal leading-tight print:flex-1">4. มีการบันทึกอุณหภูมิตู้เย็นเก็บวัคซีนหรือไม่</span><div class="shrink-0"><label><input type="radio" name="aex4">มี</label><label><input type="radio" name="aex4">ไม่มี</label></div></div>
+                    <div class="rl !mb-0 justify-between"><span class="lbl-b w-[400px] whitespace-normal leading-tight print:flex-1">5. พบอุณหภูมิตู้เย็นผิดปกติ (ต่ำกว่า 2 หรือ สูงกว่า 8 °C)</span><div class="shrink-0"><label><input type="radio" name="aex5">พบ</label><label><input type="radio" name="aex5">ไม่พบ</label></div></div>
+                    <div class="rl !mb-0 justify-between"><span class="lbl-b w-[400px] whitespace-normal leading-tight print:flex-1">6. มีสิ่งของอื่น (ยา, อาหาร) ปนในตู้เย็นวัคซีนหรือไม่</span><div class="shrink-0"><label><input type="radio" name="aex6">มี</label><label><input type="radio" name="aex6">ไม่มี</label></div></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-12 print:mt-8 px-4">
+                    <script>['ผู้ให้ข้อมูล','โทรศัพท์','ผู้สอบสวน','ตำแหน่ง','หน่วยงาน','วันที่สอบสวน'].forEach(l=>{ let type = l.includes('วันที่') ? 'date' : 'text'; document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="${type}" class="inp flex-1"></div>`); });</script>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <button class="print-btn no-print" onclick="window.print()">
+        🖨️ พิมพ์แบบฟอร์ม
+    </button>
+</body>
+</html>
