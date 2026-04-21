@@ -89,6 +89,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Config ของโรงพยาบาล/หน่วยงาน
         const firebaseConfig = {
             apiKey: "AIzaSyB_sPvnDoVn_DWTgAm4_YOE64xXh1uAhWM",
             authDomain: "epidemiology-9aa8c.firebaseapp.com",
@@ -232,7 +233,7 @@
             }
         };
 
-        // 🚀 ฟังก์ชัน ส่งออก Excel (ฉบับอัปเกรด ดึงชื่อตามฟอร์มเป๊ะๆ และเว้นว่างช่องไม่กรอก)
+        // 🚀 ฟังก์ชัน ส่งออก Excel (ฉบับอัปเกรด)
         window.exportSelectedToExcel = async () => {
             const checkboxes = document.querySelectorAll('.export-cb:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
@@ -368,6 +369,22 @@
     <script>
         window.currentDocId = null;
         window.recordsCache = {};
+
+        // ฟังก์ชันใหม่: เลือกเพศให้อัตโนมัติตามคำนำหน้า
+        window.autoSelectGender = function(selectElem, radioName) {
+            const val = selectElem.value;
+            const form = selectElem.closest('.disease-form');
+            if (form) {
+                const radios = form.querySelectorAll(`input[name="${radioName}"]`);
+                if (radios.length >= 2) {
+                    if (val === 'นาย' || val === 'เด็กชาย' || val === 'ด.ช.') {
+                        radios[0].checked = true; // ชาย
+                    } else if (val === 'นาง' || val === 'นางสาว' || val === 'เด็กหญิง' || val === 'ด.ญ.') {
+                        radios[1].checked = true; // หญิง
+                    }
+                }
+            }
+        };
 
         function toggleDisease() {
             const val = document.getElementById('disease-selector').value;
@@ -684,7 +701,7 @@
                 
                 <div class="rl">
                     <span class="lbl">คำนำหน้า</span>
-                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <select class="inp w-20" onchange="autoSelectGender(this, 'fp_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
                     <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
                     <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
                 </div>
@@ -907,7 +924,7 @@
                 
                 <div class="rl">
                     <span class="lbl">คำนำหน้า</span>
-                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <select class="inp w-20" onchange="autoSelectGender(this, 'dg_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
                     <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
                     <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
                 </div>
@@ -1010,7 +1027,7 @@
                 
                 <div class="rl">
                     <span class="lbl">คำนำหน้า</span>
-                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <select class="inp w-20" onchange="autoSelectGender(this, 'rb_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
                     <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
                     <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
                 </div>
@@ -1096,7 +1113,7 @@
                 
                 <div class="rl">
                     <span class="lbl">คำนำหน้า</span>
-                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>ด.ช.</option><option>ด.ญ.</option></select>
+                    <select class="inp w-20" onchange="autoSelectGender(this, 'ae_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
                     <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
                     <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
                 </div>
