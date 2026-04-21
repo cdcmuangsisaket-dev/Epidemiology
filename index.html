@@ -104,7 +104,6 @@
         const db = getFirestore(app);
         
         window.currentUser = null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'epidemiology-app';
 
         const initAuth = async () => {
             try {
@@ -121,10 +120,8 @@
 
         onAuthStateChanged(auth, (user) => { window.currentUser = user; });
 
-        const getCollectionPath = () => {
-            const uid = window.currentUser ? window.currentUser.uid : 'anonymous';
-            return `artifacts/${appId}/users/${uid}/EpidemiologyRecords`;
-        };
+        // 🌟 Path ส่วนกลางที่ทุกเครื่องใช้ร่วมกัน
+        const getCollectionPath = () => `HospitalData/Sisaket/EpidemiologyRecords`;
 
         // 💾 ฟังก์ชัน บันทึกข้อมูล
         window.saveToFirebase = async () => {
@@ -134,7 +131,7 @@
                 return window.showToast('❌ ขาดการเชื่อมต่อฐานข้อมูล');
             }
 
-            window.showToast('⏳ กำลังบันทึกข้อมูล...');
+            window.showToast('⏳ กำลังบันทึกข้อมูลลงคลาวด์...');
             try {
                 const data = window.getFormData();
                 const diseaseVal = document.getElementById('disease-selector').value;
@@ -182,7 +179,7 @@
             document.querySelector('.print-btn').style.display = 'none';
             
             const tbody = document.getElementById('dashboard-tbody');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-blue-600 font-bold">⏳ กำลังดึงข้อมูลจาก Firebase...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-blue-600 font-bold">⏳ กำลังดึงข้อมูลจากคลาวด์ส่วนกลาง...</td></tr>';
             
             const selectAllBtn = document.getElementById('selectAllBtn');
             if(selectAllBtn) selectAllBtn.checked = false;
@@ -209,16 +206,16 @@
                         }
                         
                         const tr = document.createElement('tr');
-                        tr.className = "hover:bg-gray-50 border-b";
+                        tr.className = "hover:bg-gray-50 border-b text-sm";
                         tr.innerHTML = `
                             <td class="p-3 text-center"><input type="checkbox" class="export-cb w-4 h-4 text-blue-600 cursor-pointer" value="${rec.docId}"></td>
                             <td class="p-3 text-center">${idx + 1}</td>
                             <td class="p-3 font-medium text-blue-800">${rec.patient_name || '-'}</td>
                             <td class="p-3">${rec.disease_label || '-'}</td>
-                            <td class="p-3 text-sm text-gray-500">${dateStr}</td>
+                            <td class="p-3 text-gray-500">${dateStr}</td>
                             <td class="p-3 text-center whitespace-nowrap">
-                                <button type="button" onclick="printRecord('${rec.docId}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded shadow-sm mr-2 transition">🖨️ พิมพ์</button>
-                                <button type="button" onclick="editRecord('${rec.docId}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded shadow-sm mr-2 transition">✏️ แก้ไข</button>
+                                <button type="button" onclick="printRecord('${rec.docId}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded shadow-sm mr-1 transition">🖨️ พิมพ์</button>
+                                <button type="button" onclick="editRecord('${rec.docId}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded shadow-sm mr-1 transition">✏️ แก้ไข</button>
                                 <button type="button" onclick="deleteRecord('${rec.docId}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm transition">🗑️ ลบ</button>
                             </td>
                         `;
@@ -233,7 +230,7 @@
             }
         };
 
-        // 🚀 ฟังก์ชัน ส่งออก Excel (ฉบับอัปเกรด)
+        // 🚀 ฟังก์ชัน ส่งออก Excel
         window.exportSelectedToExcel = async () => {
             const checkboxes = document.querySelectorAll('.export-cb:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
@@ -356,7 +353,7 @@
 
         // 🗑️ ฟังก์ชัน ลบข้อมูล
         window.deleteRecord = async (id) => {
-            if (!confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้?')) return;
+            if (!confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้อย่างถาวร?')) return;
             try {
                 const path = getCollectionPath();
                 await deleteDoc(doc(db, path, id));
@@ -370,7 +367,7 @@
         window.currentDocId = null;
         window.recordsCache = {};
 
-        // ฟังก์ชันใหม่: เลือกเพศให้อัตโนมัติตามคำนำหน้า
+        // ฟังก์ชันเลือกเพศอัตโนมัติตามคำนำหน้า
         window.autoSelectGender = function(selectElem, radioName) {
             const val = selectElem.value;
             const form = selectElem.closest('.disease-form');
@@ -835,7 +832,6 @@
                     <span>5.4 ประวัติการรับประทานอาหารช่วง 3 วันก่อนเริ่มป่วย</span>
                     <span class="text-xs text-gray-500 font-normal no-print">💡 กด + เพื่อเพิ่มเมนูในมื้อนั้น</span>
                 </div>
-                <datalist id="existing-food-menus"></datalist>
                 <table class="text-sm print:text-[11px] w-full" id="food-history-table">
                     <thead>
                         <tr>
@@ -1113,7 +1109,7 @@
                 
                 <div class="rl">
                     <span class="lbl">คำนำหน้า</span>
-                    <select class="inp w-20" onchange="autoSelectGender(this, 'ae_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <select class="inp w-20" onchange="autoSelectGender(this, 'ae_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>ด.ช.</option><option>ด.ญ.</option></select>
                     <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
                     <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
                 </div>
