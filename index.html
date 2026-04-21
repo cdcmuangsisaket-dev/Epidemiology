@@ -104,7 +104,6 @@
         const db = getFirestore(app);
         
         window.currentUser = null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'epidemiology-app';
 
         const initAuth = async () => {
             try {
@@ -121,9 +120,9 @@
 
         onAuthStateChanged(auth, (user) => { window.currentUser = user; });
 
+        // 🌟 แก้ไข: ใช้ Path ส่วนกลางแทนการแยกตามผู้ใช้งาน
         const getCollectionPath = () => {
-            const uid = window.currentUser ? window.currentUser.uid : 'anonymous';
-            return `artifacts/${appId}/users/${uid}/EpidemiologyRecords`;
+            return `HospitalData/Sisaket/EpidemiologyRecords`;
         };
 
         // 💾 ฟังก์ชัน บันทึกข้อมูล
@@ -233,7 +232,7 @@
             }
         };
 
-        // 🚀 ฟังก์ชัน ส่งออก Excel (ฉบับอัปเกรด)
+        // 🚀 ฟังก์ชัน ส่งออก Excel 
         window.exportSelectedToExcel = async () => {
             const checkboxes = document.querySelectorAll('.export-cb:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
@@ -370,7 +369,7 @@
         window.currentDocId = null;
         window.recordsCache = {};
 
-        // ฟังก์ชันใหม่: เลือกเพศให้อัตโนมัติตามคำนำหน้า
+        // ฟังก์ชันเลือกเพศอัตโนมัติตามคำนำหน้า
         window.autoSelectGender = function(selectElem, radioName) {
             const val = selectElem.value;
             const form = selectElem.closest('.disease-form');
@@ -1113,7 +1112,7 @@
                 
                 <div class="rl">
                     <span class="lbl">คำนำหน้า</span>
-                    <select class="inp w-20" onchange="autoSelectGender(this, 'ae_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <select class="inp w-20" onchange="autoSelectGender(this, 'ae_g')"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>ด.ช.</option><option>ด.ญ.</option></select>
                     <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
                     <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
                 </div>
