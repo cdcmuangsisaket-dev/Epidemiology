@@ -89,7 +89,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Config ของโรงพยาบาล/หน่วยงาน
         const firebaseConfig = {
             apiKey: "AIzaSyB_sPvnDoVn_DWTgAm4_YOE64xXh1uAhWM",
             authDomain: "epidemiology-9aa8c.firebaseapp.com",
@@ -142,10 +141,16 @@
                 
                 const activeForm = document.getElementById(`form-${diseaseVal}`);
                 const nameInputs = Array.from(activeForm.querySelectorAll('input[type="text"]'));
-                const nameInput = nameInputs.find(inp => inp.placeholder && inp.placeholder.includes('ชื่อ'));
+                
+                const fNameInp = nameInputs.find(inp => inp.placeholder && inp.placeholder.trim() === 'ชื่อ');
+                const lNameInp = nameInputs.find(inp => inp.placeholder && inp.placeholder.trim() === 'นามสกุล');
+                
+                let fullName = '';
+                if (fNameInp && fNameInp.value.trim() !== '') fullName += fNameInp.value.trim();
+                if (lNameInp && lNameInp.value.trim() !== '') fullName += ' ' + lNameInp.value.trim();
                 
                 data.timestamp = new Date().toISOString();
-                data.patient_name = (nameInput && nameInput.value.trim() !== '') ? nameInput.value : 'ไม่ระบุชื่อผู้ป่วย';
+                data.patient_name = fullName !== '' ? fullName : 'ไม่ระบุชื่อผู้ป่วย';
                 data.disease_label = diseaseSelect.options[diseaseSelect.selectedIndex].text;
 
                 const path = getCollectionPath();
@@ -210,7 +215,8 @@
                             <td class="p-3 font-medium text-blue-800">${rec.patient_name || '-'}</td>
                             <td class="p-3">${rec.disease_label || '-'}</td>
                             <td class="p-3 text-sm text-gray-500">${dateStr}</td>
-                            <td class="p-3 text-center">
+                            <td class="p-3 text-center whitespace-nowrap">
+                                <button type="button" onclick="printRecord('${rec.docId}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded shadow-sm mr-2 transition">🖨️ พิมพ์</button>
                                 <button type="button" onclick="editRecord('${rec.docId}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded shadow-sm mr-2 transition">✏️ แก้ไข</button>
                                 <button type="button" onclick="deleteRecord('${rec.docId}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm transition">🗑️ ลบ</button>
                             </td>
@@ -250,18 +256,15 @@
                         const form = document.getElementById('form-' + diseaseVal);
                         
                         const row = {};
-                        // ข้อมูลตั้งต้น
                         row["ลำดับ"] = exportIndex++;
                         row["วันที่บันทึก"] = raw.timestamp ? new Date(raw.timestamp).toLocaleString('th-TH') : '';
                         row["โรคที่สอบสวน"] = raw.disease_label || '';
 
                         if (form) {
-                            // ดึง input ทั้งหมด ยกเว้นพวกที่ซ่อน หรือ Dynamic Rows (จะได้ดึงแยกทีหลัง)
                             const inputs = form.querySelectorAll('input:not(.exclude-auto), select, textarea');
                             let processedRadios = new Set();
                             
                             inputs.forEach(inp => {
-                                // 1. หาชื่อคอลัมน์ (ตามคำรอบข้าง)
                                 let colName = '';
                                 if(inp.closest('td')) {
                                     let table = inp.closest('table');
@@ -283,16 +286,13 @@
                                 }
                                 if (!colName) colName = inp.placeholder || 'ระบุ';
 
-                                // ป้องกันชื่อคอลัมน์ซ้ำ (เช่น บ้านเลขที่ 1, บ้านเลขที่ 2)
                                 let uniqueColName = colName;
                                 let counter = 1;
                                 while(row.hasOwnProperty(uniqueColName)) {
                                     uniqueColName = `${colName} (${counter++})`;
                                 }
 
-                                // 2. ดึงค่ามาลงตาราง
                                 if (inp.type === 'radio') {
-                                    // จัดการ Radio ให้เหลือคอลัมน์เดียว
                                     if (processedRadios.has(inp.name)) return;
                                     processedRadios.add(inp.name);
                                     
@@ -300,7 +300,6 @@
                                     let val = checkedRadio && checkedRadio.closest('label') ? checkedRadio.closest('label').innerText.trim() : '';
                                     row[uniqueColName] = val;
                                 } else if (inp.type === 'checkbox') {
-                                    // จัดการ Checkbox ให้ลงเป็นติ๊กถูก
                                     let labelNode = inp.closest('label');
                                     let chkText = labelNode ? labelNode.innerText.trim() : colName;
                                     
@@ -311,12 +310,10 @@
                                     }
                                     row[uniqueChkName] = inp.checked ? '✔️ มี/ใช่' : '';
                                 } else {
-                                    // กล่องข้อความปกติ (แม้จะว่างเปล่าก็ดึง)
                                     row[uniqueColName] = inp.value || '';
                                 }
                             });
 
-                            // จัดการตารางอาหาร (Food Poisoning ข้อ 5.4) แบบตายตัว 3 มื้อ 3 รายการ
                             const foodTable = form.querySelector('#food-history-table');
                             if (foodTable && raw['_food_history']) {
                                 raw['_food_history'].forEach((dayData, dIdx) => {
@@ -325,7 +322,6 @@
                                     ['breakfast', 'lunch', 'dinner'].forEach(meal => {
                                         let mealName = meal === 'breakfast' ? 'มื้อเช้า' : (meal === 'lunch' ? 'มื้อกลางวัน' : 'มื้อเย็น');
                                         let items = dayData.meals[meal] || [];
-                                        // ล็อคไว้ที่ 3 เมนูต่อมื้อ เพื่อให้ตาราง Excel ออกมาสวยงามตายตัว
                                         for(let i=0; i<3; i++) {
                                             let item = items[i] || {food:'', source:'', shared:''};
                                             row[`${mealName} เมนูที่ ${i+1} (วันที่ ${dayNum})`] = item.food;
@@ -341,7 +337,6 @@
                     }
                 });
 
-                // คืนค่าฟอร์มกลับสู่สภาพเดิม
                 window.setFormData(currentFormData);
 
                 if (dataToExport.length === 0) return alert('ไม่มีข้อมูลสำหรับส่งออก');
@@ -575,6 +570,22 @@
             }
         };
 
+        // ฟังก์ชันสำหรับพิมพ์ข้อมูลจาก Dashboard โดยตรง (อัปเดตให้เร็วขึ้น)
+        window.printRecord = (id) => {
+            if (window.recordsCache[id]) {
+                window.currentDocId = id; 
+                window.setFormData(window.recordsCache[id]);
+                
+                // ซ่อน Dashboard และแสดงฟอร์ม
+                document.getElementById('dashboard-container').style.display = 'none';
+                document.getElementById('form-container').style.display = 'flex';
+                document.querySelector('.print-btn').style.display = 'flex';
+                
+                // สั่งพิมพ์ทันทีแบบรวดเร็ว
+                setTimeout(() => { window.print(); }, 200); 
+            }
+        };
+
         window.toggleSelectAll = function() {
             const selectAllStatus = document.getElementById('selectAllBtn').checked;
             const checkboxes = document.querySelectorAll('.export-cb');
@@ -629,7 +640,7 @@
                         <th class="p-4">ชื่อ-สกุล ผู้ป่วย</th>
                         <th class="p-4">โรคที่สอบสวน</th>
                         <th class="p-4">วันที่บันทึก</th>
-                        <th class="p-4 w-48 text-center">การจัดการ</th>
+                        <th class="p-4 w-64 text-center">การจัดการ</th>
                     </tr>
                 </thead>
                 <tbody id="dashboard-tbody"></tbody>
@@ -671,8 +682,25 @@
                 <div class="text-center font-bold text-xl mb-4">แบบสอบสวนโรคอาหารเป็นพิษ (Food poisoning)</div>
                 <div class="sec-title">1. ข้อมูลทั่วไป</div>
                 
-                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest"><span class="lbl">อายุ</span><input type="number" class="inp w-16"><span class="lbl">ปี</span><input type="number" class="inp w-16"><span class="lbl">เดือน</span></div>
-                <div class="rl"><span class="lbl">เพศ</span><label><input type="radio" name="fp_g">ชาย</label><label><input type="radio" name="fp_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"><span class="lbl">ศาสนา</span><input type="text" class="inp w-24"><span class="lbl">เชื้อชาติ</span><input type="text" class="inp w-24"><span class="lbl">อาชีพ</span><input type="text" class="inp flex-1"></div>
+                <div class="rl">
+                    <span class="lbl">คำนำหน้า</span>
+                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
+                    <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
+                </div>
+                <div class="rl">
+                    <span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest">
+                    <span class="lbl ml-4">อายุ</span><input type="number" class="inp w-12 text-center"><span class="lbl">ปี</span><input type="number" class="inp w-12 text-center"><span class="lbl">เดือน</span>
+                    <span class="lbl ml-4">เพศ</span><label><input type="radio" name="fp_g">ชาย</label><label><input type="radio" name="fp_g">หญิง</label>
+                </div>
+                <div class="rl">
+                    <span class="lbl">HN</span><input type="text" class="inp w-24">
+                    <span class="lbl">AN</span><input type="text" class="inp w-24">
+                    <span class="lbl">ศาสนา</span><input type="text" class="inp w-24">
+                    <span class="lbl">เชื้อชาติ</span><input type="text" class="inp w-24">
+                    <span class="lbl">อาชีพ</span><input type="text" class="inp flex-1">
+                </div>
+                
                 <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
                 
                 <div class="box mt-4">
@@ -876,8 +904,26 @@
             <div class="a4-sheet">
                 <div class="text-center font-bold text-xl mb-6 print:mb-4">แบบสอบสวนไข้เลือดออก (Dengue fever)</div>
                 <div class="sec-title">1. ข้อมูลทั่วไป</div>
-                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest"><span class="lbl">อายุ</span><input type="number" class="inp w-16"><span class="lbl">ปี</span><input type="number" class="inp w-16"><span class="lbl">เดือน</span></div>
-                <div class="rl"><span class="lbl">เพศ</span><label><input type="radio" name="dg_g">ชาย</label><label><input type="radio" name="dg_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"><span class="lbl">ศาสนา</span><input type="text" class="inp w-24"><span class="lbl">สัญชาติ</span><input type="text" class="inp w-24"><span class="lbl">อาชีพ</span><input type="text" class="inp flex-1"></div>
+                
+                <div class="rl">
+                    <span class="lbl">คำนำหน้า</span>
+                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
+                    <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
+                </div>
+                <div class="rl">
+                    <span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest">
+                    <span class="lbl ml-4">อายุ</span><input type="number" class="inp w-12 text-center"><span class="lbl">ปี</span><input type="number" class="inp w-12 text-center"><span class="lbl">เดือน</span>
+                    <span class="lbl ml-4">เพศ</span><label><input type="radio" name="dg_g">ชาย</label><label><input type="radio" name="dg_g">หญิง</label>
+                </div>
+                <div class="rl">
+                    <span class="lbl">HN</span><input type="text" class="inp w-24">
+                    <span class="lbl">AN</span><input type="text" class="inp w-24">
+                    <span class="lbl">ศาสนา</span><input type="text" class="inp w-24">
+                    <span class="lbl">สัญชาติ</span><input type="text" class="inp w-24">
+                    <span class="lbl">อาชีพ</span><input type="text" class="inp flex-1">
+                </div>
+                
                 <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
                 
                 <div class="box mt-4"><div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div><div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48" list="list-tambon"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48" list="list-amphoe" value="เมืองศรีสะเกษ"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1" list="list-prov" value="ศรีสะเกษ"></div><div class="rl"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="dg_a1">เทศบาลนคร</label><label><input type="radio" name="dg_a1">เทศบาลเมือง</label><label><input type="radio" name="dg_a1">เทศบาลตำบล</label><label><input type="radio" name="dg_a1">อบต.</label></div></div>
@@ -961,8 +1007,24 @@
             <div class="a4-sheet">
                 <div class="text-center font-bold text-xl mb-4">แบบสอบสวนโรคพิษสุนัขบ้า (Rabies)</div>
                 <div class="sec-title">1. ข้อมูลทั่วไป</div>
-                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest"></div>
-                <div class="rl"><span class="lbl">อายุ</span><input type="number" class="inp w-16"><span class="lbl">ปี</span><span class="lbl ml-4">เพศ</span><label><input type="radio" name="rb_g">ชาย</label><label><input type="radio" name="rb_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"><span class="lbl">อาชีพ</span><input type="text" class="inp flex-1"></div>
+                
+                <div class="rl">
+                    <span class="lbl">คำนำหน้า</span>
+                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>นางสาว</option><option>เด็กชาย</option><option>เด็กหญิง</option></select>
+                    <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
+                    <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
+                </div>
+                <div class="rl">
+                    <span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest">
+                    <span class="lbl ml-4">อายุ</span><input type="number" class="inp w-12 text-center"><span class="lbl">ปี</span>
+                    <span class="lbl ml-4">เพศ</span><label><input type="radio" name="rb_g">ชาย</label><label><input type="radio" name="rb_g">หญิง</label>
+                </div>
+                <div class="rl">
+                    <span class="lbl">HN</span><input type="text" class="inp w-24">
+                    <span class="lbl">AN</span><input type="text" class="inp w-24">
+                    <span class="lbl ml-4">อาชีพ</span><input type="text" class="inp flex-1">
+                </div>
+
                 <div class="rl box mt-4"><span class="lbl-b w-32">ระดับการศึกษาสูงสุด</span><label><input type="radio" name="rbe">ไม่เคยเรียน</label><label><input type="radio" name="rbe">ประถม</label><label><input type="radio" name="rbe">มัธยม</label><label><input type="radio" name="rbe">ป.ตรี</label><label><input type="radio" name="rbe">อาชีวะ</label><label><input type="radio" name="rbe">สูงกว่า ป.ตรี</label></div>
                 <div class="rl ml-4"><span class="lbl-b w-32">รายได้ต่อเดือน</span><label><input type="radio" name="rbi">< 10k</label><label><input type="radio" name="rbi">10k-25k</label><label><input type="radio" name="rbi">> 25k</label><span class="lbl-b ml-6">ลักษณะที่อยู่</span><input type="text" class="inp flex-1"></div>
                 <div class="rl ml-4"><span class="lbl-b w-32">สิทธิรักษาพยาบาล</span><label><input type="radio" name="rbi2">ไม่มีสิทธิ</label><label><input type="radio" name="rbi2">ประกันสังคม</label><label><input type="radio" name="rbi2">บัตรทอง</label><label><input type="radio" name="rbi2">ข้าราชการ</label><label><input type="radio" name="rbi2">อื่นๆ</label><input type="text" class="inp flex-1"></div>
@@ -1031,9 +1093,23 @@
             <div class="a4-sheet">
                 <div class="text-center font-bold text-xl mb-4 text-blue-800 print:text-black">แบบสอบสวนเหตุการณ์ไม่พึงประสงค์หลังรับวัคซีน (AEFI)</div>
                 <div class="sec-title">(1) ข้อมูลผู้ป่วย</div>
-                <div class="rl"><span class="lbl">ชื่อ-สกุล</span><select class="inp w-32"><option value="" disabled selected>คำนำหน้า</option><option>นาย</option><option>นาง</option><option>ด.ช.</option><option>ด.ญ.</option></select><input type="text" class="inp flex-1" placeholder="ชื่อ-นามสกุล"><span class="lbl ml-4">บัตรประชาชน</span><input type="text" class="inp w-48 text-center"></div>
-                <div class="rl"><span class="lbl">อายุขณะป่วย</span><input type="number" class="inp w-12"><span class="lbl">ปี</span><input type="number" class="inp w-12"><span class="lbl">ด.</span><span class="lbl ml-4">เพศ</span><label><input type="radio" name="ae_g">ชาย</label><label><input type="radio" name="ae_g">หญิง</label><span class="lbl ml-4">HN</span><input type="text" class="inp w-24"><span class="lbl">AN</span><input type="text" class="inp w-24"></div>
-                <div class="rl"><span class="lbl">ที่อยู่ขณะป่วย</span><input type="text" class="inp flex-1"></div>
+                
+                <div class="rl">
+                    <span class="lbl">คำนำหน้า</span>
+                    <select class="inp w-20"><option value="" disabled selected>เลือก</option><option>นาย</option><option>นาง</option><option>ด.ช.</option><option>ด.ญ.</option></select>
+                    <span class="lbl">ชื่อ</span><input type="text" class="inp flex-1" placeholder="ชื่อ">
+                    <span class="lbl">สกุล</span><input type="text" class="inp flex-1" placeholder="นามสกุล">
+                </div>
+                <div class="rl">
+                    <span class="lbl">เลขที่บัตรประชาชน</span><input type="text" class="inp w-48 text-center tracking-widest">
+                    <span class="lbl ml-4">อายุขณะป่วย</span><input type="number" class="inp w-12 text-center"><span class="lbl">ปี</span><input type="number" class="inp w-12 text-center"><span class="lbl">เดือน</span>
+                    <span class="lbl ml-4">เพศ</span><label><input type="radio" name="ae_g">ชาย</label><label><input type="radio" name="ae_g">หญิง</label>
+                </div>
+                <div class="rl">
+                    <span class="lbl">HN</span><input type="text" class="inp w-24">
+                    <span class="lbl">AN</span><input type="text" class="inp w-24">
+                    <span class="lbl ml-4">ที่อยู่ขณะป่วย</span><input type="text" class="inp flex-1">
+                </div>
                 
                 <div class="sec-title mt-6">(2) ข้อมูลวัคซีน/สถานที่รับวัคซีน</div>
                 <div class="rl"><span class="lbl">สถานที่รับวัคซีน</span><input type="text" class="inp flex-1"><label class="ml-4"><input type="radio" name="aev">ภาครัฐ</label><label><input type="radio" name="aev">เอกชน</label></div>
