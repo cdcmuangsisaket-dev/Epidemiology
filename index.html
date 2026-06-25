@@ -7,7 +7,6 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
@@ -89,47 +88,68 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Config ของโรงพยาบาล/หน่วยงาน
-        const firebaseConfig = {
-            apiKey: "AIzaSyB_sPvnDoVn_DWTgAm4_YOE64xXh1uAhWM",
-            authDomain: "epidemiology-9aa8c.firebaseapp.com",
-            projectId: "epidemiology-9aa8c",
-            storageBucket: "epidemiology-9aa8c.firebasestorage.app",
-            messagingSenderId: "261265216174",
-            appId: "1:261265216174:web:b3e5ef41faf2ab32db133f"
-        };
+        let firebaseConfig;
+        let appId = 'epidemiology-app';
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } else {
+                firebaseConfig = {
+                    apiKey: "AIzaSyB_sPvnDoVn_DWTgAm4_YOE64xXh1uAhWM",
+                    authDomain: "epidemiology-9aa8c.firebaseapp.com",
+                    projectId: "epidemiology-9aa8c",
+                    storageBucket: "epidemiology-9aa8c.firebasestorage.app",
+                    messagingSenderId: "261265216174",
+                    appId: "1:261265216174:web:b3e5ef41faf2ab32db133f"
+                };
+            }
+            if (typeof __app_id !== 'undefined') appId = __app_id;
+        } catch (e) { console.error("Config error", e); }
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         
         window.currentUser = null;
+        window.hasSynced = false;
 
         const initAuth = async () => {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase Auth Error:", error);
-            }
+                } else { await signInAnonymously(auth); }
+            } catch (error) { try { await signInAnonymously(auth); } catch(e){} }
         };
         initAuth();
 
-        onAuthStateChanged(auth, (user) => { window.currentUser = user; });
+        onAuthStateChanged(auth, (user) => { 
+            window.currentUser = user; 
+            if (user && !window.hasSynced) {
+                window.hasSynced = true;
+                if (typeof window.syncCacheFromCloud === 'function') window.syncCacheFromCloud();
+            }
+        });
 
-        // 🌟 Path ส่วนกลางที่ทุกเครื่องใช้ร่วมกัน
-        const getCollectionPath = () => `HospitalData/Sisaket/EpidemiologyRecords`;
+        // Path ส่วนกลางเพื่อความปลอดภัยของข้อมูล
+        const getCollectionPath = () => `artifacts/${appId}/public/data/EpidemiologyRecords`;
 
-        // 💾 ฟังก์ชัน บันทึกข้อมูล
+        // ระบบโหลดข้อมูลจากคลาวด์พื้นหลัง
+        window.syncCacheFromCloud = async () => {
+            try {
+                const path = getCollectionPath();
+                const querySnapshot = await getDocs(collection(db, path));
+                window.recordsCache = {};
+                querySnapshot.forEach((doc) => { 
+                    window.recordsCache[doc.id] = { docId: doc.id, ...doc.data() }; 
+                });
+                if(typeof window.updateWorkplaceDatalist === 'function') window.updateWorkplaceDatalist();
+            } catch (e) { console.error("Background sync failed", e); }
+        };
+
+        // บันทึกข้อมูลขึ้นคลาวด์
         window.saveToFirebase = async () => {
             if (!window.currentUser && auth.currentUser) window.currentUser = auth.currentUser;
-            if (!window.currentUser) {
-                alert("ระบบยังเชื่อมต่อฐานข้อมูลไม่สำเร็จ!");
-                return window.showToast('❌ ขาดการเชื่อมต่อฐานข้อมูล');
-            }
+            if (!window.currentUser) return window.showToast('❌ ระบบกำลังเชื่อมต่อฐานข้อมูล กรุณารอสักครู่');
 
             window.showToast('⏳ กำลังบันทึกข้อมูลลงคลาวด์...');
             try {
@@ -162,14 +182,18 @@
                     window.showToast('☁️ ✅ บันทึกข้อมูลใหม่สำเร็จ');
                 }
 
+                window.recordsCache[window.currentDocId] = { docId: window.currentDocId, ...data };
+                if(typeof window.updateWorkplaceDatalist === 'function') window.updateWorkplaceDatalist();
+
                 setTimeout(() => { window.openDashboard(); }, 800);
             } catch (e) {
                 console.error(e);
-                window.showToast('❌ บันทึกล้มเหลว');
+                window.showToast('❌ บันทึกล้มเหลว (ตรวจสอบสิทธิ์การเขียน)');
             }
         };
 
-        // 📊 ฟังก์ชัน โหลดตารางข้อมูล
+        window.allFetchedRecords = []; // ข้อมูลทั้งหมดสำหรับการกรอง
+
         window.openDashboard = async () => {
             if (!window.currentUser && auth.currentUser) window.currentUser = auth.currentUser;
             if (!window.currentUser) return window.showToast('❌ ขาดการเชื่อมต่อฐานข้อมูล');
@@ -181,64 +205,99 @@
             const tbody = document.getElementById('dashboard-tbody');
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-blue-600 font-bold">⏳ กำลังดึงข้อมูลจากคลาวด์ส่วนกลาง...</td></tr>';
             
-            const selectAllBtn = document.getElementById('selectAllBtn');
-            if(selectAllBtn) selectAllBtn.checked = false;
-
             try {
                 const path = getCollectionPath();
                 const querySnapshot = await getDocs(collection(db, path));
                 
                 let records = [];
-                querySnapshot.forEach((doc) => { records.push({ docId: doc.id, ...doc.data() }); });
+                window.recordsCache = {};
+                querySnapshot.forEach((doc) => { 
+                    const data = doc.data();
+                    window.recordsCache[doc.id] = { docId: doc.id, ...data };
+                    records.push({ docId: doc.id, ...data }); 
+                });
                 
                 records.sort((a, b) => (b.timestamp || 0).localeCompare(a.timestamp || 0));
+                window.allFetchedRecords = records;
                 
-                if (records.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-500">ไม่มีข้อมูลที่บันทึกไว้</td></tr>';
-                } else {
-                    tbody.innerHTML = '';
-                    records.forEach((rec, idx) => {
-                        window.recordsCache[rec.docId] = rec;
-                        let dateStr = '-';
-                        if(rec.timestamp) {
-                            const dateObj = new Date(rec.timestamp);
-                            dateStr = `${dateObj.toLocaleDateString('th-TH')} ${dateObj.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}`;
-                        }
-                        
-                        const tr = document.createElement('tr');
-                        tr.className = "hover:bg-gray-50 border-b text-sm";
-                        tr.innerHTML = `
-                            <td class="p-3 text-center"><input type="checkbox" class="export-cb w-4 h-4 text-blue-600 cursor-pointer" value="${rec.docId}"></td>
-                            <td class="p-3 text-center">${idx + 1}</td>
-                            <td class="p-3 font-medium text-blue-800">${rec.patient_name || '-'}</td>
-                            <td class="p-3">${rec.disease_label || '-'}</td>
-                            <td class="p-3 text-gray-500">${dateStr}</td>
-                            <td class="p-3 text-center whitespace-nowrap">
-                                <button type="button" onclick="printRecord('${rec.docId}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded shadow-sm mr-1 transition">🖨️ พิมพ์</button>
-                                <button type="button" onclick="editRecord('${rec.docId}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded shadow-sm mr-1 transition">✏️ แก้ไข</button>
-                                <button type="button" onclick="deleteRecord('${rec.docId}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm transition">🗑️ ลบ</button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                }
+                window.renderDashboardTable(records);
+                if(typeof window.updateWorkplaceDatalist === 'function') window.updateWorkplaceDatalist();
                 window.showToast('✅ โหลดข้อมูลสำเร็จ');
-                window.updateFoodDatalist(); 
             } catch (e) {
                 console.error(e);
                 window.showToast('❌ โหลดข้อมูลไม่สำเร็จ');
             }
         };
 
-        // 🚀 ฟังก์ชัน ส่งออก Excel
+        window.renderDashboardTable = (records) => {
+            const tbody = document.getElementById('dashboard-tbody');
+            const selectAllBtn = document.getElementById('selectAllBtn');
+            if(selectAllBtn) selectAllBtn.checked = false;
+
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-500">ไม่มีข้อมูลในช่วงเวลาดังกล่าว</td></tr>';
+            } else {
+                tbody.innerHTML = '';
+                records.forEach((rec, idx) => {
+                    let dateStr = '-';
+                    if(rec.timestamp) {
+                        const dateObj = new Date(rec.timestamp);
+                        dateStr = `${dateObj.toLocaleDateString('th-TH')} ${dateObj.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}`;
+                    }
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 border-b text-sm";
+                    tr.innerHTML = `
+                        <td class="p-3 text-center"><input type="checkbox" class="export-cb w-4 h-4 text-blue-600 cursor-pointer" value="${rec.docId}"></td>
+                        <td class="p-3 text-center">${idx + 1}</td>
+                        <td class="p-3 font-medium text-blue-800">${rec.patient_name || '-'}</td>
+                        <td class="p-3">${rec.disease_label || '-'}</td>
+                        <td class="p-3 text-gray-500">${dateStr}</td>
+                        <td class="p-3 text-center whitespace-nowrap">
+                            <button type="button" onclick="printRecord('${rec.docId}')" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded shadow-sm mr-1 transition">🖨️ พิมพ์</button>
+                            <button type="button" onclick="editRecord('${rec.docId}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded shadow-sm mr-1 transition">✏️ แก้ไข</button>
+                            <button type="button" onclick="deleteRecord('${rec.docId}')" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm transition">🗑️ ลบ</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        };
+
+        window.applyDateFilter = () => {
+            const startDate = document.getElementById('filter-start-date').value;
+            const endDate = document.getElementById('filter-end-date').value;
+
+            if (!startDate && !endDate) {
+                window.renderDashboardTable(window.allFetchedRecords);
+                return;
+            }
+
+            const filtered = window.allFetchedRecords.filter(rec => {
+                if (!rec.timestamp) return false;
+                const dateObj = new Date(rec.timestamp);
+                const offset = dateObj.getTimezoneOffset() * 60000;
+                const localISODate = (new Date(dateObj - offset)).toISOString().split('T')[0]; 
+                
+                if (startDate && endDate) return localISODate >= startDate && localISODate <= endDate;
+                else if (startDate) return localISODate >= startDate;
+                else if (endDate) return localISODate <= endDate;
+                return true;
+            });
+            window.renderDashboardTable(filtered);
+        };
+
+        window.clearDateFilter = () => {
+            document.getElementById('filter-start-date').value = '';
+            document.getElementById('filter-end-date').value = '';
+            window.renderDashboardTable(window.allFetchedRecords);
+        };
+
         window.exportSelectedToExcel = async () => {
             const checkboxes = document.querySelectorAll('.export-cb:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
 
-            if (selectedIds.length === 0) {
-                alert('⚠️ กรุณาติ๊กเลือกข้อมูลในตารางอย่างน้อย 1 รายการเพื่อส่งออก');
-                return;
-            }
+            if (selectedIds.length === 0) return window.showToast('⚠️ กรุณาติ๊กเลือกข้อมูลอย่างน้อย 1 รายการ');
 
             window.showToast('⏳ กำลังดึงและจัดเรียงข้อมูลลง Excel...');
             try {
@@ -270,14 +329,12 @@
                                     let tr = td.closest('tr');
                                     let colIndex = Array.from(tr.children).indexOf(td);
                                     let headers = table.querySelectorAll('thead th');
-                                    if(headers[colIndex]) {
-                                        colName = headers[colIndex].innerText.replace('+', '').trim();
-                                    } else colName = 'ข้อมูลตาราง';
+                                    if(headers[colIndex]) colName = headers[colIndex].innerText.replace('+', '').trim();
+                                    else colName = 'ข้อมูลตาราง';
                                 } else {
                                     let prev = inp.previousElementSibling;
-                                    if (prev && (prev.classList.contains('lbl') || prev.classList.contains('lbl-b'))) {
-                                        colName = prev.innerText.replace(/:/g, '').trim();
-                                    } else if (inp.closest('.rl')) {
+                                    if (prev && (prev.classList.contains('lbl') || prev.classList.contains('lbl-b'))) colName = prev.innerText.replace(/:/g, '').trim();
+                                    else if (inp.closest('.rl')) {
                                         let firstSpan = inp.closest('.rl').querySelector('.lbl, .lbl-b');
                                         if(firstSpan) colName = firstSpan.innerText.replace(/:/g, '').trim();
                                     }
@@ -286,26 +343,19 @@
 
                                 let uniqueColName = colName;
                                 let counter = 1;
-                                while(row.hasOwnProperty(uniqueColName)) {
-                                    uniqueColName = `${colName} (${counter++})`;
-                                }
+                                while(row.hasOwnProperty(uniqueColName)) uniqueColName = `${colName} (${counter++})`;
 
                                 if (inp.type === 'radio') {
                                     if (processedRadios.has(inp.name)) return;
                                     processedRadios.add(inp.name);
-                                    
                                     let checkedRadio = form.querySelector(`input[name="${inp.name}"]:checked`);
-                                    let val = checkedRadio && checkedRadio.closest('label') ? checkedRadio.closest('label').innerText.trim() : '';
-                                    row[uniqueColName] = val;
+                                    row[uniqueColName] = checkedRadio && checkedRadio.closest('label') ? checkedRadio.closest('label').innerText.trim() : '';
                                 } else if (inp.type === 'checkbox') {
                                     let labelNode = inp.closest('label');
                                     let chkText = labelNode ? labelNode.innerText.trim() : colName;
-                                    
                                     let uniqueChkName = chkText;
                                     let chkCounter = 1;
-                                    while(row.hasOwnProperty(uniqueChkName)) {
-                                        uniqueChkName = `${chkText} (${chkCounter++})`;
-                                    }
+                                    while(row.hasOwnProperty(uniqueChkName)) uniqueChkName = `${chkText} (${chkCounter++})`;
                                     row[uniqueChkName] = inp.checked ? '✔️ มี/ใช่' : '';
                                 } else {
                                     row[uniqueColName] = inp.value || '';
@@ -330,55 +380,46 @@
                                 });
                             }
                         }
-                        
                         dataToExport.push(row);
                     }
                 });
 
                 window.setFormData(currentFormData);
-
-                if (dataToExport.length === 0) return alert('ไม่มีข้อมูลสำหรับส่งออก');
+                if (dataToExport.length === 0) return window.showToast('ไม่มีข้อมูลสำหรับส่งออก');
 
                 const worksheet = XLSX.utils.json_to_sheet(dataToExport);
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Epidemiology_Data");
-                
                 XLSX.writeFile(workbook, `Epi_Report_${new Date().toLocaleDateString('th-TH').replace(/\//g,'-')}.xlsx`);
                 window.showToast('📊 ✅ ดาวน์โหลด Excel สำเร็จ');
             } catch (e) {
                 console.error(e);
-                alert("เกิดข้อผิดพลาดในการส่งออก Excel");
+                window.showToast("❌ เกิดข้อผิดพลาดในการส่งออก Excel");
             }
         };
 
-        // 🗑️ ฟังก์ชัน ลบข้อมูล
         window.deleteRecord = async (id) => {
             if (!confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลนี้อย่างถาวร?')) return;
             try {
-                const path = getCollectionPath();
-                await deleteDoc(doc(db, path, id));
+                await deleteDoc(doc(db, getCollectionPath(), id));
                 window.showToast('🗑️ ลบสำเร็จ');
                 window.openDashboard();
-            } catch (e) { alert("ลบไม่สำเร็จ: " + e.message); }
+            } catch (e) { window.showToast("❌ ลบไม่สำเร็จ"); console.error(e); }
         };
     </script>
 
     <script>
         window.currentDocId = null;
-        window.recordsCache = {};
+        window.recordsCache = window.recordsCache || {};
 
-        // ฟังก์ชันเลือกเพศอัตโนมัติตามคำนำหน้า
         window.autoSelectGender = function(selectElem, radioName) {
             const val = selectElem.value;
             const form = selectElem.closest('.disease-form');
             if (form) {
                 const radios = form.querySelectorAll(`input[name="${radioName}"]`);
                 if (radios.length >= 2) {
-                    if (val === 'นาย' || val === 'เด็กชาย' || val === 'ด.ช.') {
-                        radios[0].checked = true; // ชาย
-                    } else if (val === 'นาง' || val === 'นางสาว' || val === 'เด็กหญิง' || val === 'ด.ญ.') {
-                        radios[1].checked = true; // หญิง
-                    }
+                    if (['นาย', 'เด็กชาย', 'ด.ช.'].includes(val)) radios[0].checked = true;
+                    else if (['นาง', 'นางสาว', 'เด็กหญิง', 'ด.ญ.'].includes(val)) radios[1].checked = true;
                 }
             }
         };
@@ -398,18 +439,50 @@
         function initializeInputIds() {
             const inputs = document.querySelectorAll('.disease-form input, .disease-form select, .disease-form textarea');
             inputs.forEach((input, i) => { 
-                if (!input.id && !input.classList.contains('exclude-auto')) {
-                    input.id = 'epi_f_' + i; 
-                }
+                if (!input.id && !input.classList.contains('exclude-auto')) input.id = 'epi_f_' + i; 
             });
         }
 
-        // ฟังก์ชันจัดการฟอร์มอาหาร (Dynamic Rows)
+        // คัดกรองเมนูอาหารตามวันอัจฉริยะ
+        window.loadFoodSuggestions = function(inputElem) {
+            const tr = inputElem.closest('tr');
+            if (!tr) return;
+            const dateInput = tr.querySelector('.day-date');
+            const targetDate = dateInput ? dateInput.value : '';
+            
+            const foodSet = new Set();
+            Object.values(window.recordsCache).forEach(rec => {
+                if (rec._food_history && Array.isArray(rec._food_history)) {
+                    rec._food_history.forEach(day => {
+                        if (!targetDate || day.date === targetDate) {
+                            ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+                                if (day.meals && day.meals[meal]) {
+                                    day.meals[meal].forEach(item => {
+                                        if (item.food && item.food.trim() !== '') foodSet.add(item.food.trim());
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+
+            let dl = document.getElementById('dynamic-food-menus');
+            if (!dl) { dl = document.createElement('datalist'); dl.id = 'dynamic-food-menus'; document.body.appendChild(dl); }
+            dl.innerHTML = '';
+            foodSet.forEach(f => {
+                const opt = document.createElement('option'); opt.value = f; dl.appendChild(opt);
+            });
+            inputElem.setAttribute('list', 'dynamic-food-menus');
+        };
+
         window.addFoodToCell = function(btn) {
             const td = btn.closest('td');
             const group = td.querySelector('.food-item-group').cloneNode(true);
-            
             group.querySelectorAll('input').forEach(inp => inp.value = '');
+            
+            const nameInput = group.querySelector('.food-name-input');
+            if(nameInput) nameInput.setAttribute('onfocus', 'loadFoodSuggestions(this)');
             
             const actionBtn = group.querySelector('.action-add-btn, .action-del-btn');
             actionBtn.innerHTML = '🗑️ ลบ';
@@ -419,28 +492,21 @@
             td.appendChild(group);
         };
 
-        window.updateFoodDatalist = function() {
-            const foodSet = new Set();
+        window.updateWorkplaceDatalist = function() {
+            const workplaceSet = new Set();
             Object.values(window.recordsCache).forEach(rec => {
-                if (rec.food_history_items && Array.isArray(rec.food_history_items)) {
-                    rec.food_history_items.forEach(f => {
-                        if(f && f.trim() !== '') foodSet.add(f.trim());
-                    });
-                }
+                if (rec['_workplace'] && rec['_workplace'].trim() !== '') workplaceSet.add(rec['_workplace'].trim());
             });
-            const dl = document.getElementById('existing-food-menus');
-            if (dl) {
-                dl.innerHTML = '';
-                foodSet.forEach(f => {
-                    const opt = document.createElement('option');
-                    opt.value = f;
-                    dl.appendChild(opt);
-                });
-            }
+            let dl = document.getElementById('list-workplace');
+            if (!dl) { dl = document.createElement('datalist'); dl.id = 'list-workplace'; document.body.appendChild(dl); }
+            dl.innerHTML = '';
+            workplaceSet.forEach(w => { const opt = document.createElement('option'); opt.value = w; dl.appendChild(opt); });
         };
 
         window.getFormData = function() {
             const data = {};
+            const activeForm = document.getElementById('form-' + document.getElementById('disease-selector').value);
+            
             document.querySelectorAll('.disease-form input, .disease-form select, .disease-form textarea').forEach(input => {
                 if (!input.classList.contains('exclude-auto')) {
                     if (input.type === 'checkbox' || input.type === 'radio') data[input.id] = input.checked;
@@ -448,6 +514,11 @@
                 }
             });
             data['_selected_disease'] = document.getElementById('disease-selector').value;
+
+            if(activeForm) {
+                const wpInput = activeForm.querySelector('.workplace-input');
+                if(wpInput) data['_workplace'] = wpInput.value;
+            }
 
             const foodTable = document.getElementById('food-history-table');
             if (foodTable) {
@@ -477,7 +548,6 @@
                 data['_food_history'] = history;
                 data['food_history_items'] = foodItemsList; 
             }
-
             return data;
         }
 
@@ -505,7 +575,6 @@
                             const meals = ['breakfast', 'lunch', 'dinner'];
                             meals.forEach((meal, mIdx) => {
                                 const td = tr.querySelectorAll('td')[mIdx + 1];
-                                
                                 const groups = td.querySelectorAll('.food-item-group');
                                 groups.forEach((g, i) => { if (i > 0) g.remove(); });
                                 
@@ -518,6 +587,9 @@
                                         actionBtn.innerHTML = '🗑️ ลบ';
                                         actionBtn.className = 'text-red-500 hover:text-red-700 text-[11px] font-bold no-print action-del-btn bg-red-50 px-2 py-0.5 rounded';
                                         actionBtn.onclick = function() { group.remove(); };
+                                        
+                                        const nameInput = group.querySelector('.food-name-input');
+                                        if(nameInput) nameInput.setAttribute('onfocus', 'loadFoodSuggestions(this)');
                                         td.appendChild(group);
                                     }
                                     group.querySelector('.food-name-input').value = item.food || '';
@@ -538,7 +610,31 @@
             }
         }
 
-        // รีเซ็ตให้กลับเป็น Default Value ตามที่กำหนดไว้
+        // ระบบจำข้อมูลลงเครื่อง (Auto-save) และตั้งวันที่ปัจจุบัน
+        window.loadAutoSaveFields = function() {
+            document.querySelectorAll('.autosave-field').forEach(inp => {
+                const savedVal = localStorage.getItem('epi_save_' + inp.dataset.savekey);
+                if (savedVal) inp.value = savedVal; 
+                if (!inp.dataset.listenerAttached) {
+                    inp.addEventListener('input', function() {
+                        localStorage.setItem('epi_save_' + this.dataset.savekey, this.value);
+                        document.querySelectorAll(`.autosave-field[data-savekey="${this.dataset.savekey}"]`).forEach(other => {
+                            if (other !== this) other.value = this.value;
+                        });
+                    });
+                    inp.dataset.listenerAttached = 'true';
+                }
+            });
+
+            document.querySelectorAll('.inv-date-field').forEach(inp => {
+                 if (!inp.value) {
+                     const today = new Date();
+                     const offset = today.getTimezoneOffset() * 60000;
+                     inp.value = (new Date(today - offset)).toISOString().split('T')[0];
+                 }
+            });
+        };
+
         window.clearForm = function() {
             document.querySelectorAll('.disease-form input, .disease-form select:not(#disease-selector), .disease-form textarea').forEach(input => {
                 if (!input.classList.contains('exclude-auto')) {
@@ -555,13 +651,12 @@
                         if (idx > 0) { 
                             const groups = td.querySelectorAll('.food-item-group');
                             groups.forEach((g, i) => { if (i > 0) g.remove(); });
-                            if(groups[0]) {
-                                groups[0].querySelectorAll('input').forEach(inp => inp.value = '');
-                            }
+                            if(groups[0]) groups[0].querySelectorAll('input').forEach(inp => inp.value = '');
                         }
                     });
                 });
             }
+            if (typeof window.loadAutoSaveFields === 'function') window.loadAutoSaveFields();
         }
 
         window.createNew = function() {
@@ -584,18 +679,13 @@
             }
         };
 
-        // ฟังก์ชันสำหรับพิมพ์ข้อมูลจาก Dashboard โดยตรง (อัปเดตให้เร็วขึ้น)
         window.printRecord = (id) => {
             if (window.recordsCache[id]) {
                 window.currentDocId = id; 
                 window.setFormData(window.recordsCache[id]);
-                
-                // ซ่อน Dashboard และแสดงฟอร์ม
                 document.getElementById('dashboard-container').style.display = 'none';
                 document.getElementById('form-container').style.display = 'flex';
                 document.querySelector('.print-btn').style.display = 'flex';
-                
-                // สั่งพิมพ์ทันทีแบบรวดเร็ว
                 setTimeout(() => { window.print(); }, 200); 
             }
         };
@@ -606,7 +696,11 @@
             checkboxes.forEach(cb => { cb.checked = selectAllStatus; });
         };
 
-        window.addEventListener('DOMContentLoaded', () => { toggleDisease(); initializeInputIds(); });
+        window.addEventListener('DOMContentLoaded', () => { 
+            toggleDisease(); 
+            initializeInputIds(); 
+            loadAutoSaveFields(); 
+        });
     </script>
 </head>
 <body>
@@ -643,6 +737,22 @@
                 <button type="button" onclick="createNew()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg shadow font-medium">✨ สร้างใหม่</button>
             </div>
         </div>
+
+        <div class="bg-blue-50 p-4 rounded-lg flex flex-wrap gap-4 items-end mb-6 border border-blue-100">
+            <div>
+                <label class="block text-sm font-semibold text-blue-800 mb-1">ตั้งแต่วันที่ (ที่เกิดเหตุ)</label>
+                <input type="date" id="filter-start-date" class="px-3 py-2 border border-blue-200 rounded-md outline-none focus:border-blue-500 font-sans">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-blue-800 mb-1">ถึงวันที่</label>
+                <input type="date" id="filter-end-date" class="px-3 py-2 border border-blue-200 rounded-md outline-none focus:border-blue-500 font-sans">
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="applyDateFilter()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🔍 กรองข้อมูล</button>
+                <button type="button" onclick="clearDateFilter()" class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-md shadow-sm text-sm font-medium transition">🧹 ล้างค่า</button>
+            </div>
+        </div>
+
         <div class="overflow-x-auto rounded-lg border border-gray-200">
             <table class="w-full border-collapse bg-white text-left">
                 <thead class="bg-blue-50 text-blue-900 border-b-2 border-blue-100">
@@ -662,32 +772,17 @@
         </div>
     </div>
 
-    <datalist id="list-prov">
-        <option value="ศรีสะเกษ"></option>
-    </datalist>
-    <datalist id="list-amphoe">
-        <option value="เมืองศรีสะเกษ"></option>
-    </datalist>
+    <datalist id="list-prov"><option value="ศรีสะเกษ"></option></datalist>
+    <datalist id="list-amphoe"><option value="เมืองศรีสะเกษ"></option></datalist>
     <datalist id="list-tambon">
-        <option value="เมืองเหนือ"></option>
-        <option value="เมืองใต้"></option>
-        <option value="คูซอด"></option>
-        <option value="ซำ"></option>
-        <option value="จาน"></option>
-        <option value="ตะดอบ"></option>
-        <option value="หนองครก"></option>
-        <option value="โพนข่า"></option>
-        <option value="โพนค้อ"></option>
-        <option value="โพนเขวา"></option>
-        <option value="หญ้าปล้อง"></option>
-        <option value="ทุ่ม"></option>
-        <option value="หนองไฮ"></option>
-        <option value="น้ำคำ"></option>
-        <option value="หนองแก้ว"></option>
-        <option value="หนองไผ่"></option>
-        <option value="หมากเขียบ"></option>
-        <option value="โพธิ์"></option>
+        <option value="เมืองเหนือ"></option><option value="เมืองใต้"></option><option value="คูซอด"></option>
+        <option value="ซำ"></option><option value="จาน"></option><option value="ตะดอบ"></option>
+        <option value="หนองครก"></option><option value="โพนข่า"></option><option value="โพนค้อ"></option>
+        <option value="โพนเขวา"></option><option value="หญ้าปล้อง"></option><option value="ทุ่ม"></option>
+        <option value="หนองไฮ"></option><option value="น้ำคำ"></option><option value="หนองแก้ว"></option>
+        <option value="หนองไผ่"></option><option value="หมากเขียบ"></option><option value="โพธิ์"></option>
     </datalist>
+    <datalist id="list-workplace"></datalist>
 
     <div id="form-container" class="w-full flex flex-col items-center">
         
@@ -715,7 +810,7 @@
                     <span class="lbl">อาชีพ</span><input type="text" class="inp flex-1">
                 </div>
                 
-                <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
+                <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1 workplace-input" list="list-workplace"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
                 
                 <div class="box mt-4">
                     <div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชื่อหมู่บ้าน/ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div>
@@ -846,7 +941,7 @@
                         for(let i=0;i<3;i++) { 
                             let c = `<td class="text-left align-top p-2 border border-gray-200">
                                 <div class="food-item-group border-b border-gray-100 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
-                                    <div class="rl !mb-1"><span class="lbl text-gray-500 print:text-black text-[11px]">อาหาร</span><input type="text" class="inp flex-1 exclude-auto food-name-input text-[11px]" list="existing-food-menus" placeholder="ระบุเมนู"></div>
+                                    <div class="rl !mb-1"><span class="lbl text-gray-500 print:text-black text-[11px]">อาหาร</span><input type="text" class="inp flex-1 exclude-auto food-name-input text-[11px]" onfocus="loadFoodSuggestions(this)" placeholder="ระบุเมนู"></div>
                                     <div class="rl !mb-1"><span class="lbl text-gray-500 print:text-black text-[11px]">แหล่งซื้อ</span><input type="text" class="inp flex-1 exclude-auto food-source-input text-[11px]"></div>
                                     <div class="rl !mb-0 flex justify-between items-center w-full"><div class="flex items-center"><span class="lbl text-gray-500 print:text-black text-[11px] mr-2">ผู้ร่วมวง</span><input type="number" class="inp w-10 text-center exclude-auto food-shared-input text-[11px]"></div><button type="button" class="text-blue-600 hover:text-blue-800 text-[11px] font-bold no-print action-add-btn bg-blue-50 px-2 py-0.5 rounded" onclick="addFoodToCell(this)">+ เพิ่ม</button></div>
                                 </div>
@@ -890,9 +985,12 @@
 
                 <div class="grid grid-cols-2 gap-x-12 gap-y-4 mt-12 print:mt-8 px-4">
                     <script>
-                        ['ผู้ให้ข้อมูล','หมายเลขโทรศัพท์','ชื่อผู้สอบสวน','ตำแหน่ง','หน่วยงาน','จังหวัด อำเภอ','วันที่สอบสวน','หมายเลขโทรศัพท์'].forEach((l,i)=>{
-                            let inp = i===6 ? `<input type="date" class="inp flex-1">` : `<input type="text" class="inp flex-1">`;
-                            document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span>${inp}</div>`);
+                        ['ผู้ให้ข้อมูล|informant','หมายเลขโทรศัพท์|informant_tel','ชื่อผู้สอบสวน|investigator','ตำแหน่ง|position','หน่วยงาน|agency','จังหวัด อำเภอ|prov_dist','วันที่สอบสวน|inv_date','หมายเลขโทรศัพท์|investigator_tel'].forEach((item)=>{
+                            let [l, k] = item.split('|');
+                            let isDate = l.includes('วันที่');
+                            let type = isDate ? 'date' : 'text';
+                            let extra = isDate ? 'inv-date-field' : `autosave-field`;
+                            document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="${type}" class="inp flex-1 ${extra}" data-savekey="${k}"></div>`);
                         });
                     </script>
                 </div>
@@ -937,7 +1035,7 @@
                     <span class="lbl">อาชีพ</span><input type="text" class="inp flex-1">
                 </div>
                 
-                <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
+                <div class="rl"><span class="lbl">ที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1 workplace-input" list="list-workplace"><span class="lbl">ชั้นเรียน</span><input type="text" class="inp w-48"></div>
                 
                 <div class="box mt-4"><div class="rl"><span class="lbl-b">ที่อยู่ขณะป่วย</span><span class="lbl ml-2">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp w-16"><span class="lbl">ชุมชน</span><input type="text" class="inp flex-1"><span class="lbl">ซอย</span><input type="text" class="inp w-32"></div><div class="rl"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp w-48" list="list-tambon"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48" list="list-amphoe" value="เมืองศรีสะเกษ"><span class="lbl">จังหวัด</span><input type="text" class="inp flex-1" list="list-prov" value="ศรีสะเกษ"></div><div class="rl"><span class="lbl">โทรศัพท์</span><input type="text" class="inp w-48"><label class="ml-4"><input type="radio" name="dg_a1">เทศบาลนคร</label><label><input type="radio" name="dg_a1">เทศบาลเมือง</label><label><input type="radio" name="dg_a1">เทศบาลตำบล</label><label><input type="radio" name="dg_a1">อบต.</label></div></div>
                 <div class="box"><div class="rl"><span class="lbl-b">ภูมิลำเนา</span><span class="lbl ml-2">เป็นที่เดียวกับที่อยู่ขณะป่วยหรือไม่</span><label><input type="radio" name="dg_s">ใช่</label><label><input type="radio" name="dg_s">ไม่ใช่</label><span class="lbl">บ้านเลขที่</span><input type="text" class="inp w-16"><span class="lbl">หมู่ที่</span><input type="text" class="inp flex-1"></div><div class="rl"><span class="lbl">ชุมชน</span><input type="text" class="inp w-64"><span class="lbl">ซอย</span><input type="text" class="inp w-32"><span class="lbl">ถนน</span><input type="text" class="inp w-48"><span class="lbl">ตำบล</span><input type="text" class="inp flex-1" list="list-tambon"></div><div class="rl"><span class="lbl">อำเภอ</span><input type="text" class="inp w-48" list="list-amphoe" value="เมืองศรีสะเกษ"><span class="lbl">จังหวัด</span><input type="text" class="inp w-48" list="list-prov" value="ศรีสะเกษ"><label class="ml-4"><input type="radio" name="dg_a2">นคร</label><label><input type="radio" name="dg_a2">เมือง</label><label><input type="radio" name="dg_a2">ตำบล</label><label><input type="radio" name="dg_a2">อบต.</label></div></div>
@@ -1010,8 +1108,17 @@
                 </table>
                 <div class="sec-title mt-6">มาตรการเบื้องต้น</div>
                 <div class="rl"><span class="lbl">การพ่นฆ่ายุง วันที่</span><input type="date" class="inp w-32"><span class="lbl">ครั้งที่</span><input type="number" class="inp w-12 text-center"><span class="lbl ml-4">วันที่</span><input type="date" class="inp w-32"><span class="lbl">ครั้งที่</span><input type="number" class="inp w-12 text-center"></div>
+                
                 <div class="grid grid-cols-2 gap-4 mt-8 print:mt-4">
-                    <script>['ผู้ให้ข้อมูล','โทรศัพท์','ผู้สอบสวน','ตำแหน่ง','หน่วยงาน','จังหวัด อำเภอ'].forEach(l=>{ document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="text" class="inp flex-1"></div>`); });</script>
+                    <script>
+                        ['ผู้ให้ข้อมูล|informant','หมายเลขโทรศัพท์|informant_tel','ชื่อผู้สอบสวน|investigator','ตำแหน่ง|position','หน่วยงาน|agency','จังหวัด อำเภอ|prov_dist','วันที่สอบสวน|inv_date','หมายเลขโทรศัพท์|investigator_tel'].forEach((item)=>{
+                            let [l, k] = item.split('|');
+                            let isDate = l.includes('วันที่');
+                            let type = isDate ? 'date' : 'text';
+                            let extra = isDate ? 'inv-date-field' : `autosave-field`;
+                            document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="${type}" class="inp flex-1 ${extra}" data-savekey="${k}"></div>`);
+                        });
+                    </script>
                 </div>
             </div>
         </div>
@@ -1035,7 +1142,7 @@
                 <div class="rl">
                     <span class="lbl">HN</span><input type="text" class="inp w-24">
                     <span class="lbl">AN</span><input type="text" class="inp w-24">
-                    <span class="lbl ml-4">อาชีพ</span><input type="text" class="inp flex-1">
+                    <span class="lbl ml-4">อาชีพ</span><input type="text" class="inp flex-1 workplace-input" list="list-workplace">
                 </div>
 
                 <div class="rl box mt-4"><span class="lbl-b w-32">ระดับการศึกษาสูงสุด</span><label><input type="radio" name="rbe">ไม่เคยเรียน</label><label><input type="radio" name="rbe">ประถม</label><label><input type="radio" name="rbe">มัธยม</label><label><input type="radio" name="rbe">ป.ตรี</label><label><input type="radio" name="rbe">อาชีวะ</label><label><input type="radio" name="rbe">สูงกว่า ป.ตรี</label></div>
@@ -1097,7 +1204,15 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mt-12 print:mt-8 px-4">
-                    <script>['ผู้ให้ข้อมูล','โทรศัพท์','ผู้สอบสวน','ตำแหน่ง','หน่วยงาน','จังหวัด อำเภอ'].forEach(l=>{ document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="text" class="inp flex-1"></div>`); });</script>
+                    <script>
+                        ['ผู้ให้ข้อมูล|informant','หมายเลขโทรศัพท์|informant_tel','ชื่อผู้สอบสวน|investigator','ตำแหน่ง|position','หน่วยงาน|agency','จังหวัด อำเภอ|prov_dist','วันที่สอบสวน|inv_date','หมายเลขโทรศัพท์|investigator_tel'].forEach((item)=>{
+                            let [l, k] = item.split('|');
+                            let isDate = l.includes('วันที่');
+                            let type = isDate ? 'date' : 'text';
+                            let extra = isDate ? 'inv-date-field' : `autosave-field`;
+                            document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="${type}" class="inp flex-1 ${extra}" data-savekey="${k}"></div>`);
+                        });
+                    </script>
                 </div>
             </div>
         </div>
@@ -1122,6 +1237,9 @@
                     <span class="lbl">HN</span><input type="text" class="inp w-24">
                     <span class="lbl">AN</span><input type="text" class="inp w-24">
                     <span class="lbl ml-4">ที่อยู่ขณะป่วย</span><input type="text" class="inp flex-1">
+                </div>
+                <div class="rl">
+                    <span class="lbl">สถานที่ทำงาน/โรงเรียน</span><input type="text" class="inp flex-1 workplace-input" list="list-workplace">
                 </div>
                 
                 <div class="sec-title mt-6">(2) ข้อมูลวัคซีน/สถานที่รับวัคซีน</div>
@@ -1156,7 +1274,15 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-4 mt-12 print:mt-8 px-4">
-                    <script>['ผู้ให้ข้อมูล','โทรศัพท์','ผู้สอบสวน','ตำแหน่ง','หน่วยงาน','วันที่สอบสวน'].forEach(l=>{ let type = l.includes('วันที่') ? 'date' : 'text'; document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="${type}" class="inp flex-1"></div>`); });</script>
+                    <script>
+                        ['ผู้ให้ข้อมูล|informant','หมายเลขโทรศัพท์|informant_tel','ชื่อผู้สอบสวน|investigator','ตำแหน่ง|position','หน่วยงาน|agency','จังหวัด อำเภอ|prov_dist','วันที่สอบสวน|inv_date','หมายเลขโทรศัพท์|investigator_tel'].forEach((item)=>{
+                            let [l, k] = item.split('|');
+                            let isDate = l.includes('วันที่');
+                            let type = isDate ? 'date' : 'text';
+                            let extra = isDate ? 'inv-date-field' : `autosave-field`;
+                            document.write(`<div class="rl"><span class="lbl-b w-24">${l}</span><input type="${type}" class="inp flex-1 ${extra}" data-savekey="${k}"></div>`);
+                        });
+                    </script>
                 </div>
             </div>
         </div>
