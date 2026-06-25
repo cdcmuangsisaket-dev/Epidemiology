@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบแบบฟอร์มสอบสวนโรค (Epidemiology Form)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -166,6 +166,84 @@
             
             /* Compact widths for print */
             .w-12 { width: 3rem !important; } .w-16 { width: 4rem !important; } .w-24 { width: 6rem !important; } .w-32 { width: 8rem !important; } .w-48 { width: 12rem !important; } .w-64 { width: 16rem !important; }
+        }
+
+        /* ==========================================
+           4. MOBILE RESPONSIVE (ADDED FOR MOBILE SUPPORT)
+           ========================================== */
+        @media (max-width: 768px) {
+            body { padding: 0.5rem; }
+            
+            /* System Controller adjustments */
+            .system-controller {
+                flex-direction: column;
+                position: relative; /* ยกเลิก Sticky บนมือถือเพื่อประหยัดพื้นที่จอ */
+                top: 0;
+                padding: 1rem;
+                gap: 0.5rem;
+                border-radius: 12px;
+            }
+            .controller-group {
+                width: 100%;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .system-controller label { display: none; } /* ซ่อนข้อความเพื่อให้ dropdown เต็มจอ */
+            .system-controller select { width: 100%; margin-top: 0.5rem; font-size: 16px; }
+            .action-btn { flex: 1; justify-content: center; padding: 10px 8px; font-size: 13px; }
+
+            /* A4 Sheet scaling */
+            .a4-sheet { 
+                padding: 1.25rem 1rem; 
+                border-radius: 12px; 
+            }
+            
+            /* Form Fields Stacking (เปลี่ยนจากแนวนอนเป็นแนวตั้ง) */
+            .rl { 
+                flex-direction: column; 
+                align-items: stretch; 
+                gap: 6px;
+                margin-bottom: 1.25rem;
+            }
+            .rl > * { margin-left: 0 !important; } 
+            .rl > span.lbl, .rl > span.lbl-b { margin-top: 6px; }
+            .rl > span.lbl:first-child, .rl > span.lbl-b:first-child { margin-top: 0; }
+            
+            /* Inputs (ขยายให้เต็มจอและกดง่ายขึ้น) */
+            .inp { 
+                width: 100% !important; 
+                height: 44px !important; 
+                font-size: 16px !important; /* ป้องกันระบบ iOS ซูมจออัตโนมัติ */
+            }
+            textarea.inp { min-height: 100px !important; height: auto !important; }
+
+            /* Boxes and Paddings */
+            .box { padding: 1rem; }
+            .pl-32, .pl-64, .ml-4, .ml-6, .ml-8, .ml-12, .ml-24, .ml-32 { 
+                padding-left: 0 !important; 
+                margin-left: 0 !important; 
+            }
+
+            /* Radio/Checkbox alignment */
+            .rl > div { flex-wrap: wrap; gap: 8px; justify-content: flex-start !important; }
+            .disease-form label { margin-right: 12px; margin-bottom: 4px; padding: 4px 0; }
+
+            /* Typography */
+            .sec-title { font-size: 1.15rem; margin-top: 1.5rem; margin-bottom: 1rem; }
+            .a4-sheet > .text-center.font-bold.text-xl, 
+            .a4-sheet > .text-center.font-bold.text-2xl { font-size: 1.3rem; margin-bottom: 1.5rem; }
+
+            /* Tables (บังคับให้สามารถเลื่อนซ้ายขวาได้) */
+            .overflow-x-auto { 
+                width: 100%; 
+                margin-bottom: 1rem;
+                padding-bottom: 8px;
+            }
+            table { min-width: 800px; } 
+            th, td { font-size: 13px !important; padding: 8px !important; }
+
+            /* Floating Button */
+            .print-btn { bottom: 15px; right: 15px; padding: 12px 20px; font-size: 14px; }
         }
     </style>
 
@@ -1026,30 +1104,32 @@
                     <span class="lbl-b text-xl text-blue-900">5.4 ประวัติการรับประทานอาหารช่วง 3 วันก่อนเริ่มป่วย</span>
                     <span class="text-sm text-blue-600 font-bold bg-white px-3 py-1 rounded-full shadow-sm no-print">💡 กด + เพื่อเพิ่มเมนูในมื้อนั้นๆ แบบไม่จำกัด</span>
                 </div>
-                <table class="text-sm print:text-[11px] w-full" id="food-history-table">
-                    <thead>
-                        <tr>
-                            <th class="w-40 py-4 text-base">วันที่รับประทาน</th>
-                            <th class="w-[28%] py-4 text-base bg-amber-50 text-amber-800 border-b border-amber-200">มื้อเช้า</th>
-                            <th class="w-[28%] py-4 text-base bg-orange-50 text-orange-800 border-b border-orange-200">มื้อกลางวัน</th>
-                            <th class="w-[28%] py-4 text-base bg-indigo-50 text-indigo-800 border-b border-indigo-200">มื้อเย็น</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <script>
-                        for(let i=0;i<3;i++) { 
-                            let c = `<td class="text-left align-top p-3 border-r border-b border-slate-200 bg-white">
-                                <div class="food-item-group bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3 last:mb-0 relative group">
-                                    <div class="rl !mb-2"><span class="lbl text-slate-500 print:text-black text-xs font-bold w-16">เมนูอาหาร</span><input type="text" class="inp flex-1 exclude-auto food-name-input !h-8 text-sm" list="existing-food-menus" placeholder="ระบุเมนู"></div>
-                                    <div class="rl !mb-2"><span class="lbl text-slate-500 print:text-black text-xs font-bold w-16">แหล่งซื้อ</span><input type="text" class="inp flex-1 exclude-auto food-source-input !h-8 text-sm" placeholder="ร้าน/ตลาด/ทำเอง"></div>
-                                    <div class="rl !mb-0 flex justify-between items-center w-full"><div class="flex items-center"><span class="lbl text-slate-500 print:text-black text-xs font-bold w-16">ผู้ร่วมวง</span><input type="number" class="inp w-16 text-center exclude-auto food-shared-input !h-8 text-sm"><span class="ml-2 text-xs text-slate-400">คน</span></div><button type="button" class="text-blue-600 hover:text-white hover:bg-blue-600 text-xs font-bold no-print action-add-btn bg-blue-100 px-3 py-1 rounded transition border border-blue-200" onclick="addFoodToCell(this)">+ เพิ่มเมนู</button></div>
-                                </div>
-                            </td>`; 
-                            document.write(`<tr><td class="align-middle p-3 border-l border-r border-b border-slate-200 bg-slate-50 text-center font-bold text-slate-600">วันที่ ${i+1}<br><input type="date" class="inp w-full text-sm mt-2 font-normal print:text-[10px] exclude-auto day-date shadow-sm"></td>${c}${c}${c}</tr>`); 
-                        }
-                        </script>
-                    </tbody>
-                </table>
+                <div class="overflow-x-auto">
+                    <table class="text-sm print:text-[11px] w-full" id="food-history-table">
+                        <thead>
+                            <tr>
+                                <th class="w-40 py-4 text-base">วันที่รับประทาน</th>
+                                <th class="w-[28%] py-4 text-base bg-amber-50 text-amber-800 border-b border-amber-200">มื้อเช้า</th>
+                                <th class="w-[28%] py-4 text-base bg-orange-50 text-orange-800 border-b border-orange-200">มื้อกลางวัน</th>
+                                <th class="w-[28%] py-4 text-base bg-indigo-50 text-indigo-800 border-b border-indigo-200">มื้อเย็น</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <script>
+                            for(let i=0;i<3;i++) { 
+                                let c = `<td class="text-left align-top p-3 border-r border-b border-slate-200 bg-white">
+                                    <div class="food-item-group bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3 last:mb-0 relative group">
+                                        <div class="rl !mb-2"><span class="lbl text-slate-500 print:text-black text-xs font-bold w-16">เมนูอาหาร</span><input type="text" class="inp flex-1 exclude-auto food-name-input !h-8 text-sm" list="existing-food-menus" placeholder="ระบุเมนู"></div>
+                                        <div class="rl !mb-2"><span class="lbl text-slate-500 print:text-black text-xs font-bold w-16">แหล่งซื้อ</span><input type="text" class="inp flex-1 exclude-auto food-source-input !h-8 text-sm" placeholder="ร้าน/ตลาด/ทำเอง"></div>
+                                        <div class="rl !mb-0 flex justify-between items-center w-full"><div class="flex items-center"><span class="lbl text-slate-500 print:text-black text-xs font-bold w-16">ผู้ร่วมวง</span><input type="number" class="inp w-16 text-center exclude-auto food-shared-input !h-8 text-sm"><span class="ml-2 text-xs text-slate-400">คน</span></div><button type="button" class="text-blue-600 hover:text-white hover:bg-blue-600 text-xs font-bold no-print action-add-btn bg-blue-100 px-3 py-1 rounded transition border border-blue-200" onclick="addFoodToCell(this)">+ เพิ่มเมนู</button></div>
+                                    </div>
+                                </td>`; 
+                                document.write(`<tr><td class="align-middle p-3 border-l border-r border-b border-slate-200 bg-slate-50 text-center font-bold text-slate-600">วันที่ ${i+1}<br><input type="date" class="inp w-full text-sm mt-2 font-normal print:text-[10px] exclude-auto day-date shadow-sm"></td>${c}${c}${c}</tr>`); 
+                            }
+                            </script>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="box mt-10 bg-rose-50 border-rose-200 shadow-sm">
                     <div class="rl"><span class="lbl-b text-rose-800 text-lg">5.5 อาหารที่สงสัยเป็นสาเหตุของการป่วยครั้งนี้ (ระบุให้ชัดเจน)</span><input type="text" class="inp flex-1 font-bold text-rose-700"></div>
