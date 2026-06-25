@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ระบบแบบฟอร์มสอบสวนโรค (Epidemiology Form)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,12 +15,11 @@
            ========================================== */
         body { 
             font-family: 'Sarabun', sans-serif; 
-            background-color: #f1f5f9; /* Soft slate background */
+            background-color: #f1f5f9; 
             display: flex; flex-direction: column; align-items: center; 
             padding: 1.5rem; margin: 0; color: #334155; 
         }
 
-        /* 🟢 System Controller (Sticky Header) */
         .system-controller { 
             width: 100%; max-width: 1100px; 
             background: rgba(255, 255, 255, 0.95); 
@@ -44,7 +43,7 @@
         .action-btn { 
             padding: 8px 16px; font-size: 14.5px; border-radius: 8px; border: 1px solid #e2e8f0; 
             background: white; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
-            color: #475569; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; user-select: none; 
+            color: #475569; font-weight: 600; display: flex; align-items: center; gap: 6px; transition: all 0.2s; user-select: none; justify-content: center;
         }
         .action-btn.primary { background: #2563eb; color: white; border-color: #1d4ed8; }
         .action-btn.primary:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(37,99,235,0.2); }
@@ -60,9 +59,6 @@
         #toast { visibility: hidden; min-width: 250px; background-color: #1e293b; color: #fff; text-align: center; border-radius: 8px; padding: 12px 20px; font-weight: 500; position: fixed; z-index: 1100; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         #toast.show { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* ==========================================
-           2. Form UI Layout (Modern Web App Style)
-           ========================================== */
         .disease-form { width: 100%; display: flex; flex-direction: column; align-items: center; }
         
         .a4-sheet { 
@@ -73,12 +69,10 @@
             font-size: 15px; line-height: 1.8; border: 1px solid #e2e8f0;
         }
         
-        /* Layout Wrappers */
         .rl { display: flex; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 14px; }
         .box { background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; transition: border-color 0.2s;}
         .box:hover { border-color: #cbd5e1; }
         
-        /* Typography */
         .lbl { font-weight: 500; color: #475569; white-space: nowrap; font-size: 14.5px; }
         .lbl-b { font-weight: 700; color: #1e3a8a; white-space: nowrap; font-size: 15px; }
         .sec-title { 
@@ -88,7 +82,6 @@
         }
         .a4-sheet > .text-center.font-bold.text-xl { color: #0f172a; font-size: 1.5rem; margin-bottom: 2rem; }
 
-        /* Modern Inputs */
         .inp { 
             border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; 
             background: #ffffff; outline: none; height: 38px; 
@@ -98,7 +91,6 @@
         .inp:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.25); }
         .inp::placeholder { color: #94a3b8; }
         
-        /* Checkboxes and Radios */
         .disease-form label { display: inline-flex; align-items: center; white-space: nowrap; margin-right: 16px; cursor: pointer; color: #334155; font-weight: 500; transition: color 0.2s;}
         .disease-form label:hover { color: #2563eb; }
         .disease-form input[type="radio"], .disease-form input[type="checkbox"] { 
@@ -106,38 +98,97 @@
             cursor: pointer; position: relative; top: -1px;
         }
         
-        /* Sizing Helpers (Slightly larger for web view) */
-        .w-12 { width: 4rem; text-align: center; } 
-        .w-16 { width: 5rem; text-align: center; } 
-        .w-24 { width: 8rem; text-align: center; } 
-        .w-32 { width: 11rem; } 
-        .w-48 { width: 15rem; } 
-        .w-64 { width: 20rem; } 
-        .flex-1 { flex: 1; min-width: 100px; }
+        .w-12 { width: 4rem; text-align: center; } .w-16 { width: 5rem; text-align: center; } .w-24 { width: 8rem; text-align: center; } .w-32 { width: 11rem; } .w-48 { width: 15rem; } .w-64 { width: 20rem; } .flex-1 { flex: 1; min-width: 100px; }
         
-        /* Modern Tables */
         .a4-sheet table { 
             width: 100%; border-collapse: separate; border-spacing: 0; 
             margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; 
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
         }
-        .a4-sheet th, .a4-sheet td { 
-            border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; 
-            padding: 10px 12px; font-size: 14px; vertical-align: middle;
-        }
+        .a4-sheet th, .a4-sheet td { border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; padding: 10px 12px; font-size: 14px; vertical-align: middle; }
         .a4-sheet th { background-color: #f8fafc; font-weight: 700; color: #1e3a8a; text-align: center; }
         .a4-sheet tr:last-child td { border-bottom: none; }
         .a4-sheet th:last-child, .a4-sheet td:last-child { border-right: none; }
         .a4-sheet tbody tr:hover { background-color: #f1f5f9; transition: background-color 0.2s; }
         .a4-sheet textarea.inp { height: auto; min-height: 80px; resize: vertical; padding: 10px; width: 100%; }
 
+        .mobile-bottom-bar { display: none; }
+
         /* ==========================================
-           3. PRINT STYLES (Converts back to A4 Paper look)
+           🌟 APP-LIKE MOBILE RESPONSIVE UI 🌟
+           ========================================== */
+        @media (max-width: 768px) {
+            body { 
+                padding: 0 0 80px 0 !important; /* เว้นที่ว่างให้ Bottom Bar */
+                background-color: #f1f5f9; 
+            }
+            
+            .system-controller {
+                position: relative; top: 0; 
+                border-radius: 0; border-left: none; border-right: none; border-top: none; 
+                margin-bottom: 0; padding: 1rem; flex-direction: column; align-items: stretch;
+            }
+            .system-controller .action-btn { display: none; } /* ซ่อนปุ่มบน Header ย้ายไปล่างแทน */
+            .system-controller select { width: 100%; height: 44px; font-size: 16px; margin-top: 4px; }
+            .system-controller label { display: block; margin-bottom: 4px; }
+            
+            .a4-sheet { 
+                padding: 1.25rem !important; 
+                border-radius: 0 !important; 
+                border-left: none; border-right: none; 
+                margin-bottom: 12px !important; 
+                box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important; 
+            }
+
+            /* เปลี่ยน Layout จากแนวนอนเป็นแนวตั้ง */
+            .rl { 
+                flex-direction: column; align-items: flex-start !important; 
+                gap: 8px !important; margin-bottom: 1.25rem !important; 
+            }
+            .rl > * { margin-left: 0 !important; width: 100% !important; } 
+            
+            /* ขยายช่อง Input ให้กดง่าย */
+            .inp { height: 48px !important; font-size: 16px !important; }
+            textarea.inp { min-height: 120px !important; }
+            
+            /* ขยาย Checkbox / Radio ให้จิ้มง่าย (Touch Target) */
+            .disease-form label { font-size: 16px !important; padding: 8px 0; width: 100%; border-bottom: 1px solid #f1f5f9; margin-right: 0;}
+            .disease-form input[type="radio"], .disease-form input[type="checkbox"] { 
+                width: 24px !important; height: 24px !important; margin-right: 12px !important; 
+            }
+            
+            /* ปรับตารางเลื่อนซ้ายขวาได้เนียนขึ้น */
+            .overflow-x-auto { 
+                width: 100%; padding-bottom: 8px; margin-bottom: 1rem;
+                box-shadow: inset -15px 0 15px -15px rgba(0,0,0,0.1); /* Shadow hint */
+            }
+            table { min-width: 800px; } 
+            
+            /* Sticky Bottom Action Bar */
+            .mobile-bottom-bar {
+                display: flex !important; position: fixed; bottom: 0; left: 0; right: 0; 
+                background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+                padding: 12px 16px; box-shadow: 0 -4px 15px rgba(0,0,0,0.08); z-index: 1000; 
+                gap: 12px; justify-content: space-between; align-items: center; 
+                padding-bottom: calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e8f0;
+            }
+            .mobile-bottom-bar .action-btn { flex: 1; padding: 14px 12px; font-size: 16px; border-radius: 12px; }
+            
+            .box { padding: 1.25rem; }
+            .pl-32, .pl-64, .ml-4, .ml-6, .ml-8, .ml-12, .ml-24, .ml-32 { padding-left: 0 !important; margin-left: 0 !important; }
+            .sec-title { font-size: 1.2rem; margin-top: 1rem; }
+            .print-btn { bottom: 90px; right: 15px; padding: 12px; border-radius: 50%; width: 56px; height: 56px; justify-content: center; }
+            .print-btn svg { width: 28px; height: 28px; margin: 0; }
+            .print-btn text { display: none; } /* ซ่อนข้อความปุ่มพิมพ์ เหลือแค่ไอคอน */
+        }
+
+        /* ==========================================
+           3. PRINT STYLES
            ========================================== */
         @media print {
             @page { size: A4; margin: 0; }
-            body { background: white; padding: 0; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .no-print { display: none !important; }
+            body { background: white !important; padding: 0 !important; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print, .mobile-bottom-bar { display: none !important; }
             .disease-form { display: none !important; }
             .disease-form.active-form { display: block !important; }
             
@@ -146,9 +197,9 @@
                 margin: 0 auto !important; box-shadow: none !important; border-radius: 0 !important; 
                 padding: 12mm 15mm !important; page-break-after: always; font-size: 14px !important; line-height: 1.6 !important; border: none !important;
             }
-            .rl { gap: 4px !important; margin-bottom: 6px !important; }
+            .rl { gap: 4px !important; margin-bottom: 6px !important; flex-direction: row !important; }
+            .rl > * { width: auto !important; }
             .sec-title { color: #000 !important; margin: 1rem 0 0.25rem 0 !important; border-bottom: 1px solid #000 !important; padding-bottom: 2px !important; }
-            .a4-sheet > .text-center.font-bold.text-xl { margin-bottom: 1rem !important; }
             
             .inp { border: none !important; border-bottom: 1px dotted #000 !important; background: transparent !important; border-radius: 0 !important; padding: 0 2px !important; height: 20px !important; margin: 0 4px !important; color: #000 !important; box-shadow: none !important; }
             .inp::placeholder { color: transparent; }
@@ -156,6 +207,7 @@
             
             .disease-form input[type="radio"], .disease-form input[type="checkbox"] { border: 1px solid #000 !important; appearance: none !important; border-radius: 0 !important; top: 0 !important; margin-right: 6px !important; width: 14px !important; height: 14px !important; }
             .disease-form input[type="radio"]:checked::before, .disease-form input[type="checkbox"]:checked::before { content: '✓'; position: absolute; top: -5px; left: 1px; font-size: 14px; font-weight: bold; color: #000; }
+            .disease-form label { font-size: 14px !important; width: auto !important; border: none !important; padding: 0 !important;}
             
             .box { background: transparent !important; padding: 0 !important; border: none !important; margin-bottom: 0.5rem !important; }
             .a4-sheet table { margin: 8px 0 !important; border: 1px solid #000 !important; table-layout: fixed; box-shadow: none !important; border-radius: 0 !important;}
@@ -164,86 +216,7 @@
             .a4-sheet tbody tr:hover { background-color: transparent !important; }
             .a4-sheet textarea.inp { border: none !important; border-bottom: 1px dotted #000 !important; min-height: auto !important;}
             
-            /* Compact widths for print */
             .w-12 { width: 3rem !important; } .w-16 { width: 4rem !important; } .w-24 { width: 6rem !important; } .w-32 { width: 8rem !important; } .w-48 { width: 12rem !important; } .w-64 { width: 16rem !important; }
-        }
-
-        /* ==========================================
-           4. MOBILE RESPONSIVE (ADDED FOR MOBILE SUPPORT)
-           ========================================== */
-        @media (max-width: 768px) {
-            body { padding: 0.5rem; }
-            
-            /* System Controller adjustments */
-            .system-controller {
-                flex-direction: column;
-                position: relative; /* ยกเลิก Sticky บนมือถือเพื่อประหยัดพื้นที่จอ */
-                top: 0;
-                padding: 1rem;
-                gap: 0.5rem;
-                border-radius: 12px;
-            }
-            .controller-group {
-                width: 100%;
-                justify-content: space-between;
-                gap: 0.5rem;
-            }
-            .system-controller label { display: none; } /* ซ่อนข้อความเพื่อให้ dropdown เต็มจอ */
-            .system-controller select { width: 100%; margin-top: 0.5rem; font-size: 16px; }
-            .action-btn { flex: 1; justify-content: center; padding: 10px 8px; font-size: 13px; }
-
-            /* A4 Sheet scaling */
-            .a4-sheet { 
-                padding: 1.25rem 1rem; 
-                border-radius: 12px; 
-            }
-            
-            /* Form Fields Stacking (เปลี่ยนจากแนวนอนเป็นแนวตั้ง) */
-            .rl { 
-                flex-direction: column; 
-                align-items: stretch; 
-                gap: 6px;
-                margin-bottom: 1.25rem;
-            }
-            .rl > * { margin-left: 0 !important; } 
-            .rl > span.lbl, .rl > span.lbl-b { margin-top: 6px; }
-            .rl > span.lbl:first-child, .rl > span.lbl-b:first-child { margin-top: 0; }
-            
-            /* Inputs (ขยายให้เต็มจอและกดง่ายขึ้น) */
-            .inp { 
-                width: 100% !important; 
-                height: 44px !important; 
-                font-size: 16px !important; /* ป้องกันระบบ iOS ซูมจออัตโนมัติ */
-            }
-            textarea.inp { min-height: 100px !important; height: auto !important; }
-
-            /* Boxes and Paddings */
-            .box { padding: 1rem; }
-            .pl-32, .pl-64, .ml-4, .ml-6, .ml-8, .ml-12, .ml-24, .ml-32 { 
-                padding-left: 0 !important; 
-                margin-left: 0 !important; 
-            }
-
-            /* Radio/Checkbox alignment */
-            .rl > div { flex-wrap: wrap; gap: 8px; justify-content: flex-start !important; }
-            .disease-form label { margin-right: 12px; margin-bottom: 4px; padding: 4px 0; }
-
-            /* Typography */
-            .sec-title { font-size: 1.15rem; margin-top: 1.5rem; margin-bottom: 1rem; }
-            .a4-sheet > .text-center.font-bold.text-xl, 
-            .a4-sheet > .text-center.font-bold.text-2xl { font-size: 1.3rem; margin-bottom: 1.5rem; }
-
-            /* Tables (บังคับให้สามารถเลื่อนซ้ายขวาได้) */
-            .overflow-x-auto { 
-                width: 100%; 
-                margin-bottom: 1rem;
-                padding-bottom: 8px;
-            }
-            table { min-width: 800px; } 
-            th, td { font-size: 13px !important; padding: 8px !important; }
-
-            /* Floating Button */
-            .print-btn { bottom: 15px; right: 15px; padding: 12px 20px; font-size: 14px; }
         }
     </style>
 
@@ -296,7 +269,6 @@
 
         const getCollectionPath = () => `artifacts/${appId}/public/data/EpidemiologyRecords`;
 
-        // 🔄 โหลดข้อมูลจากคลาวด์พื้นหลัง
         window.syncCacheFromCloud = async () => {
             try {
                 const path = getCollectionPath();
@@ -310,7 +282,6 @@
             } catch (e) { console.error("Background sync failed", e); }
         };
 
-        // 💾 บันทึกข้อมูล
         window.saveToFirebase = async () => {
             if (!window.currentUser && auth.currentUser) window.currentUser = auth.currentUser;
             if (!window.currentUser) return window.showToast('❌ ระบบกำลังเชื่อมต่อฐานข้อมูล กรุณารอสักครู่');
@@ -324,8 +295,8 @@
                 const activeForm = document.getElementById(`form-${diseaseVal}`);
                 const nameInputs = Array.from(activeForm.querySelectorAll('input[type="text"]'));
                 
-                const fNameInp = nameInputs.find(inp => inp.placeholder && inp.placeholder.trim() === 'ชื่อ');
-                const lNameInp = nameInputs.find(inp => inp.placeholder && inp.placeholder.trim() === 'นามสกุล');
+                const fNameInp = nameInputs.find(inp => inp.placeholder && inp.placeholder.trim() === 'ชื่อ' || inp.placeholder === 'ชื่อผู้ป่วย');
+                const lNameInp = nameInputs.find(inp => inp.placeholder && inp.placeholder.trim() === 'นามสกุล' || inp.placeholder === 'นามสกุลผู้ป่วย');
                 
                 let fullName = '';
                 if (fNameInp && fNameInp.value.trim() !== '') fullName += fNameInp.value.trim();
@@ -359,7 +330,6 @@
 
         window.allFetchedRecords = [];
 
-        // 📊 โหลด Dashboard
         window.openDashboard = async () => {
             if (!window.currentUser && auth.currentUser) window.currentUser = auth.currentUser;
             if (!window.currentUser) return window.showToast('❌ ขาดการเชื่อมต่อฐานข้อมูล');
@@ -603,14 +573,30 @@
             setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
         }
 
+        // Script เพิ่ม inputmode="numeric" ให้ช่องที่มักกรอกตัวเลข
+        function optimizeForMobileKeyboards() {
+            const inputs = document.querySelectorAll('.disease-form input');
+            inputs.forEach((input) => {
+                const isNumericField = 
+                    input.type === 'number' || 
+                    (input.placeholder && (input.placeholder.includes('โทร') || input.placeholder.includes('อายุ') || input.placeholder.includes('รัศมี'))) ||
+                    (input.previousElementSibling && (input.previousElementSibling.innerText.includes('โทร') || input.previousElementSibling.innerText.includes('บัตรประชาชน') || input.previousElementSibling.innerText.includes('อายุ')));
+                
+                if (isNumericField && input.type !== 'date' && input.type !== 'time') {
+                    input.setAttribute('inputmode', 'numeric');
+                    if(input.type === 'text') input.setAttribute('pattern', '[0-9]*');
+                }
+            });
+        }
+
         function initializeInputIds() {
             const inputs = document.querySelectorAll('.disease-form input, .disease-form select, .disease-form textarea');
             inputs.forEach((input, i) => { 
                 if (!input.id && !input.classList.contains('exclude-auto')) input.id = 'epi_f_' + i; 
             });
+            optimizeForMobileKeyboards(); // เรียกใช้งานเมื่อโหลด
         }
 
-        // คัดกรองเมนูอาหารตามวันอัจฉริยะ
         window.loadFoodSuggestions = function(inputElem) {
             const tr = inputElem.closest('tr');
             if (!tr) return;
@@ -657,6 +643,7 @@
             actionBtn.onclick = function() { group.remove(); };
             
             td.appendChild(group);
+            optimizeForMobileKeyboards(); // Re-apply for new inputs
         };
 
         window.updateWorkplaceDatalist = function() {
@@ -777,7 +764,6 @@
             }
         }
 
-        // ระบบจำข้อมูลลงเครื่อง (Auto-save) และตั้งวันที่ปัจจุบัน
         window.loadAutoSaveFields = function() {
             document.querySelectorAll('.autosave-field').forEach(inp => {
                 const savedVal = localStorage.getItem('epi_save_' + inp.dataset.savekey);
@@ -874,9 +860,15 @@
 
     <div id="toast">Message</div>
 
+    <div class="mobile-bottom-bar no-print">
+        <button type="button" onclick="createNew()" class="action-btn" style="flex: 0.5; font-size: 20px;" title="สร้างใหม่">✨</button>
+        <button type="button" onclick="openDashboard()" class="action-btn" style="flex: 1.2;">📊 จัดการข้อมูล</button>
+        <button type="button" onclick="saveToFirebase()" class="action-btn primary" style="flex: 1.5; font-size: 16px;">☁️ บันทึกข้อมูล</button>
+    </div>
+
     <div class="system-controller no-print">
         <div class="controller-group">
-            <svg class="w-7 h-7 text-blue-700 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            <svg class="w-7 h-7 text-blue-700 drop-shadow-sm no-print" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             <label>เลือกแบบสอบสวนโรค :</label>
             <select id="disease-selector" onchange="toggleDisease()" class="shadow-sm">
                 <option value="fp">โรคอาหารเป็นพิษ (Food poisoning)</option>
@@ -886,7 +878,7 @@
             </select>
         </div>
 
-        <div class="controller-group">
+        <div class="controller-group hidden md:flex">
             <button type="button" onclick="saveToFirebase()" class="action-btn primary">☁️ บันทึกข้อมูล</button>
             <button type="button" onclick="openDashboard()" class="action-btn">📊 จัดการข้อมูล</button>
             <button type="button" onclick="createNew()" class="action-btn text-emerald-600">✨ สร้างฟอร์มใหม่</button>
@@ -894,29 +886,29 @@
     </div>
 
     <div id="dashboard-container" style="display:none;" class="w-full max-w-6xl bg-white rounded-2xl shadow-xl p-8 mb-8 no-print border border-slate-200">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h2 class="text-2xl font-bold text-blue-900">รายการแบบสอบสวนโรคทั้งหมด</h2>
-            <div class="flex gap-3">
-                <button type="button" onclick="exportSelectedToExcel()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl shadow font-medium flex items-center gap-2 transition-transform transform hover:-translate-y-0.5">
+            <div class="flex flex-wrap gap-3 w-full md:w-auto">
+                <button type="button" onclick="exportSelectedToExcel()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl shadow font-medium flex items-center gap-2 transition-transform transform hover:-translate-y-0.5 flex-1 justify-center">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    ดาวน์โหลด Excel (ที่เลือก)
+                    ดาวน์โหลด Excel
                 </button>
-                <button type="button" onclick="createNew()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl shadow font-medium transition-transform transform hover:-translate-y-0.5">✨ สร้างใหม่</button>
+                <button type="button" onclick="createNew()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl shadow font-medium transition-transform transform hover:-translate-y-0.5 flex-1 justify-center">✨ สร้างใหม่</button>
             </div>
         </div>
 
         <div class="bg-slate-50 p-5 rounded-xl flex flex-wrap gap-4 items-end mb-6 border border-slate-200 shadow-sm">
-            <div>
+            <div class="w-full md:w-auto">
                 <label class="block text-sm font-bold text-slate-700 mb-1.5">ตั้งแต่วันที่ (ที่เกิดเหตุ)</label>
-                <input type="date" id="filter-start-date" class="px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 font-sans shadow-sm transition">
+                <input type="date" id="filter-start-date" class="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 font-sans shadow-sm transition">
             </div>
-            <div>
+            <div class="w-full md:w-auto">
                 <label class="block text-sm font-bold text-slate-700 mb-1.5">ถึงวันที่</label>
-                <input type="date" id="filter-end-date" class="px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 font-sans shadow-sm transition">
+                <input type="date" id="filter-end-date" class="w-full px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 font-sans shadow-sm transition">
             </div>
-            <div class="flex gap-2">
-                <button type="button" onclick="applyDateFilter()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow-sm text-sm font-bold transition">🔍 กรองข้อมูล</button>
-                <button type="button" onclick="clearDateFilter()" class="bg-slate-400 hover:bg-slate-500 text-white px-5 py-2.5 rounded-lg shadow-sm text-sm font-bold transition">🧹 ล้างค่า</button>
+            <div class="flex gap-2 w-full md:w-auto">
+                <button type="button" onclick="applyDateFilter()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow-sm text-sm font-bold transition">🔍 กรองข้อมูล</button>
+                <button type="button" onclick="clearDateFilter()" class="flex-1 bg-slate-400 hover:bg-slate-500 text-white px-5 py-2.5 rounded-lg shadow-sm text-sm font-bold transition">🧹 ล้างค่า</button>
             </div>
         </div>
 
@@ -925,7 +917,7 @@
                 <thead class="bg-slate-100 text-slate-700 border-b-2 border-slate-200">
                     <tr>
                         <th class="p-4 w-12 text-center" title="เลือกทั้งหมด">
-                            <input type="checkbox" id="selectAllBtn" onclick="toggleSelectAll()" class="w-5 h-5 text-blue-600 cursor-pointer rounded border-slate-300 focus:ring-blue-500">
+                            <input type="checkbox" id="selectAllBtn" onclick="toggleSelectAll()" class="w-6 h-6 md:w-5 md:h-5 text-blue-600 cursor-pointer rounded border-slate-300 focus:ring-blue-500">
                         </th>
                         <th class="p-4 w-16 text-center font-bold">ลำดับ</th>
                         <th class="p-4 font-bold">ชื่อ-สกุล ผู้ป่วย</th>
@@ -1533,8 +1525,10 @@
 
                 <div class="rl box mt-6 shadow-sm"><span class="lbl-b w-40 text-lg">ระดับการศึกษาสูงสุด</span><div class="flex flex-wrap gap-4 flex-1"><label><input type="radio" name="rbe">ไม่เคยเรียน</label><label><input type="radio" name="rbe">ประถมศึกษา</label><label><input type="radio" name="rbe">มัธยมศึกษา</label><label><input type="radio" name="rbe">ปริญญาตรี</label><label><input type="radio" name="rbe">อาชีวะ/ปวช/ปวส.</label><label><input type="radio" name="rbe">สูงกว่า ป.ตรี</label></div></div>
                 <div class="rl box shadow-sm !py-3">
-                    <div class="w-1/2 flex items-center"><span class="lbl-b w-40">รายได้ต่อเดือน</span><label><input type="radio" name="rbi">< 10,000 บ.</label><label class="ml-4"><input type="radio" name="rbi">10k-25k</label><label class="ml-4"><input type="radio" name="rbi">> 25,000 บ.</label></div>
-                    <div class="w-1/2 flex items-center pl-6 border-l border-slate-200"><span class="lbl-b w-32 text-indigo-800">ลักษณะที่อยู่อาศัย</span><input type="text" class="inp flex-1" placeholder="เช่น บ้านเดี่ยว ทาวน์เฮาส์ แคมป์คนงาน"></div>
+                    <div class="w-full flex flex-col md:flex-row md:items-center">
+                        <div class="w-full md:w-1/2 flex items-center mb-4 md:mb-0"><span class="lbl-b w-40">รายได้ต่อเดือน</span><label><input type="radio" name="rbi">< 10k บ.</label><label class="ml-4"><input type="radio" name="rbi">10k-25k</label><label class="ml-4"><input type="radio" name="rbi">> 25k บ.</label></div>
+                        <div class="w-full md:w-1/2 flex items-center md:pl-6 md:border-l border-slate-200"><span class="lbl-b w-32 text-indigo-800">ลักษณะที่อยู่อาศัย</span><input type="text" class="inp flex-1" placeholder="เช่น บ้านเดี่ยว ทาวน์เฮาส์ แคมป์คนงาน"></div>
+                    </div>
                 </div>
                 <div class="rl box shadow-sm"><span class="lbl-b w-40">สิทธิการรักษาพยาบาล</span><div class="flex flex-wrap gap-6 flex-1"><label class="text-rose-600 font-bold"><input type="radio" name="rbi2">ไม่มีสิทธิ/ชำระเงินเอง</label><label><input type="radio" name="rbi2">ประกันสังคม</label><label><input type="radio" name="rbi2">บัตรทอง (UC)</label><label><input type="radio" name="rbi2">ข้าราชการ/รัฐวิสาหกิจ</label><label><input type="radio" name="rbi2">สิทธิอื่นๆ ระบุ :</label><input type="text" class="inp flex-1 min-w-[200px]"></div></div>
                 
@@ -1713,7 +1707,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="rl box mt-4 shadow-sm bg-pink-50/50 border-pink-200"><span class="lbl-b text-pink-700 text-lg w-48">♀️ เฉพาะผู้ป่วยหญิง :</span><div class="flex flex-1 items-center bg-white p-3 rounded-lg border border-pink-100 shadow-sm"><span class="lbl-b text-pink-900 mr-6">กำลังตั้งครรภ์ หรือไม่?</span><label class="font-bold text-rose-500"><input type="radio" name="aep">ใช่ (ตั้งครรภ์)</label><label class="font-bold text-emerald-600 ml-6"><input type="radio" name="aep">ไม่ใช่</label><div class="w-px h-8 bg-pink-200 mx-8"></div><span class="lbl-b text-pink-900 mr-6">กำลังให้นมบุตร หรือไม่?</span><label class="font-bold text-rose-500"><input type="radio" name="aeb">ใช่ (ให้นม)</label><label class="font-bold text-emerald-600 ml-6"><input type="radio" name="aeb">ไม่ใช่</label></div></div>
+                <div class="rl box mt-4 shadow-sm bg-pink-50/50 border-pink-200"><span class="lbl-b text-pink-700 text-lg w-48">♀️ เฉพาะผู้ป่วยหญิง :</span><div class="flex flex-1 items-center bg-white p-3 rounded-lg border border-pink-100 shadow-sm"><span class="lbl-b text-pink-900 mr-6">กำลังตั้งครรภ์ หรือไม่?</span><label class="font-bold text-rose-500"><input type="radio" name="aep">ใช่ (ตั้งครรภ์)</label><label class="font-bold text-emerald-600 ml-6"><input type="radio" name="aep">ไม่ใช่</label><div class="w-px h-8 bg-pink-200 mx-8 hidden md:block"></div><span class="lbl-b text-pink-900 mr-6">กำลังให้นมบุตร หรือไม่?</span><label class="font-bold text-rose-500"><input type="radio" name="aeb">ใช่ (ให้นม)</label><label class="font-bold text-emerald-600 ml-6"><input type="radio" name="aeb">ไม่ใช่</label></div></div>
 
                 <div class="sec-title mt-10">(4) อาการป่วย / การรักษา / การวินิจฉัยโรค</div>
                 <div class="rl box bg-rose-50 border-rose-100 py-4 mb-6 shadow-sm"><span class="lbl-b text-rose-900 text-lg w-48">วันที่เริ่มมีอาการ AEFI</span><input type="date" class="inp w-48 bg-white font-bold text-rose-700 shadow-sm"><span class="lbl-b text-rose-900 ml-8">เวลาโดยประมาณ</span><input type="time" class="inp w-32 bg-white font-bold text-rose-700 shadow-sm"><span class="lbl text-rose-900 mx-2">น.</span></div>
@@ -1729,7 +1723,7 @@
                     </div>
                 </div>
 
-                <div class="rl box shadow-sm bg-slate-800 border-slate-900 py-5"><span class="lbl-b text-white text-lg w-48">สภาพผู้ป่วยในปัจจุบัน</span><div class="flex flex-wrap gap-4 flex-1 bg-white p-2 rounded-lg"><label class="font-bold text-emerald-600 hover:bg-emerald-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">หายเป็นปกติ</label><label class="font-bold text-amber-600 hover:bg-amber-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">อาการดีขึ้น กำลังรักษา</label><label class="font-bold text-orange-600 hover:bg-orange-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">พิการ / ทุพพลภาพ</label><label class="text-rose-600 font-bold hover:bg-rose-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">เสียชีวิต</label></div><div class="flex items-center ml-4"><span class="lbl font-bold text-rose-300 mr-4">วันที่เสียชีวิต (ถ้ามี)</span><input type="date" class="inp w-48 bg-slate-700 border-slate-600 text-rose-200"></div></div>
+                <div class="rl box shadow-sm bg-slate-800 border-slate-900 py-5"><span class="lbl-b text-white text-lg w-48">สภาพผู้ป่วยในปัจจุบัน</span><div class="flex flex-wrap gap-4 flex-1 bg-white p-2 rounded-lg"><label class="font-bold text-emerald-600 hover:bg-emerald-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">หายเป็นปกติ</label><label class="font-bold text-amber-600 hover:bg-amber-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">อาการดีขึ้น กำลังรักษา</label><label class="font-bold text-orange-600 hover:bg-orange-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">พิการ / ทุพพลภาพ</label><label class="text-rose-600 font-bold hover:bg-rose-50 p-2 rounded cursor-pointer transition"><input type="radio" name="aes">เสียชีวิต</label></div><div class="flex items-center ml-4 mt-4 md:mt-0"><span class="lbl font-bold text-rose-300 mr-4">วันที่เสียชีวิต (ถ้ามี)</span><input type="date" class="inp w-48 bg-slate-700 border-slate-600 text-rose-200"></div></div>
             </div>
 
             <div class="a4-sheet">
@@ -1763,7 +1757,7 @@
 
     <button class="print-btn no-print" onclick="window.print()">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-        พิมพ์แบบฟอร์ม A4
+        <text>พิมพ์แบบฟอร์ม A4</text>
     </button>
 </body>
 </html>
